@@ -25,7 +25,8 @@ export ANDROID_ARCH=$3
 # try to pick it up with the value of _ANDROID_NDK_ROOT below. If
 # ANDROID_NDK_ROOT is set, then the value is ignored.
 # _ANDROID_NDK="android-ndk-r8e"
-_ANDROID_NDK="android-ndk-r9"
+# _ANDROID_NDK="android-ndk-r9"
+_ANDROID_NDK="android-ndk-r11c"
 # _ANDROID_NDK="android-ndk-r10"
 
 # Set _ANDROID_EABI to the EABI you want to use. You can find the
@@ -46,8 +47,8 @@ _ANDROID_ARCH=$ANDROID_ARCH
 # example, API-17) because the NDK does not supply the platform. At
 # Android 5.0, there will likely be another platform added (android-22?).
 # This value is always used.
-# _ANDROID_API="android-14"
-_ANDROID_API="android-9"
+_ANDROID_API="android-14"
+# _ANDROID_API="android-9"
 # _ANDROID_API="android-19"
 
 #####################################################################
@@ -129,18 +130,18 @@ if [ -z "$ANDROID_TOOLCHAIN" ] || [ ! -d "$ANDROID_TOOLCHAIN" ]; then
 fi
 
 case $_ANDROID_ARCH in
-	arch-arm)	  
+	arch-arm)
       ANDROID_TOOLS="arm-linux-androideabi-gcc arm-linux-androideabi-ranlib arm-linux-androideabi-ld"
       _ANDROID_API="android-9"
 	  ;;
-	arch-x86)	  
+	arch-x86)
       ANDROID_TOOLS="i686-linux-android-gcc i686-linux-android-ranlib i686-linux-android-ld"
       _ANDROID_API="android-9"
 	  ;;
-    arch-mips)
-      ANDROID_TOOLS="mipsel-linux-android-gcc mipsel-linux-android-ranlib mipsel-linux-android-ld"
-      _ANDROID_API="android-9"
-      ;;
+    # arch-mips)
+    #   ANDROID_TOOLS="mipsel-linux-android-gcc mipsel-linux-android-ranlib mipsel-linux-android-ld"
+    #   _ANDROID_API="android-9"
+    #   ;;
     arch-x86_64)
       ANDROID_TOOLS="x86_64-linux-android-gcc x86_64-linux-android-ranlib x86_64-linux-android-ld"
       _ANDROID_API="android-21"
@@ -231,13 +232,13 @@ if [ "$_ANDROID_ARCH" == "arch-x86" ]; then
 	export CROSS_COMPILE="i686-linux-android-"
 fi
 
-if [ "$_ANDROID_ARCH" == "arch-mips" ]; then
-    export MACHINE=mips
-    export RELEASE=2.6.37
-    export SYSTEM=android
-    export ARCH=mips
-    export CROSS_COMPILE="mipsel-linux-android-"
-fi
+# if [ "$_ANDROID_ARCH" == "arch-mips" ]; then
+#     export MACHINE=mips
+#     export RELEASE=2.6.37
+#     export SYSTEM=android
+#     export ARCH=mips
+#     export CROSS_COMPILE="mipsel-linux-android-"
+# fi
 
 if [ "$_ANDROID_ARCH" == "arch-x86_64" ]; then
     export MACHINE=x86_64

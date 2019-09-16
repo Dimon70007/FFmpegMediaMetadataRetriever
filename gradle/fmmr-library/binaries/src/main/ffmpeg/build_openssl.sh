@@ -34,8 +34,8 @@ X86_PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/darwin-x86_64
 X86_64_PLATFORM=$NDK/platforms/android-21/arch-x86_64/
 X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/darwin-x86_64
 
-MIPS_PLATFORM=$NDK/platforms/android-9/arch-mips/
-MIPS_PREBUILT=$NDK/toolchains/mipsel-linux-android-4.9/prebuilt/darwin-x86_64
+# MIPS_PLATFORM=$NDK/platforms/android-9/arch-mips/
+# MIPS_PREBUILT=$NDK/toolchains/mipsel-linux-android-4.9/prebuilt/darwin-x86_64
 
 BUILD_DIR=`pwd`/openssl-android
 
@@ -68,11 +68,11 @@ then
     PLATFORM=$ARM64_PLATFORM
     PREBUILT=$ARM64_PREBUILT
     HOST=aarch64-linux-android
-elif [ $ARCH == "mips" ]
-then
-    PLATFORM=$MIPS_PLATFORM
-    PREBUILT=$MIPS_PREBUILT
-    HOST=mipsel-linux-android
+# elif [ $ARCH == "mips" ]
+# then
+#     PLATFORM=$MIPS_PLATFORM
+#     PREBUILT=$MIPS_PREBUILT
+#     HOST=mipsel-linux-android
 #alexvas
 elif [ $ARCH == "x86_64" ]
 then
@@ -91,9 +91,9 @@ mkdir -p $INSTALL_DIR
 . ./Setenv-android.sh $NDK $ANDROID_EABI $ANDROID_ARCH
 cd openssl-${OPENSSL_VERSION}
 
-if [ $TARGET == "mips" ]
-then
-    ./Configure android-mips shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
+# if [ $TARGET == "mips" ]
+# then
+#     ./Configure android-mips shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
 elif [ $TARGET == "x86_64" ]
 then
     #./Configure linux-generic64 shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
@@ -163,14 +163,14 @@ if [ $TARGET == 'i686' ]; then
   build_one
 fi
 
-if [ $TARGET == 'mips' ]; then
-  CPU=mips
-  ARCH=mips
-  PREFIX=`pwd`/../jni/openssl-android/mips
-  export ANDROID_EABI=mipsel-linux-android-4.9
-  export ANDROID_ARCH=arch-mips
-  build_one
-fi
+# if [ $TARGET == 'mips' ]; then
+#   CPU=mips
+#   ARCH=mips
+#   PREFIX=`pwd`/../jni/openssl-android/mips
+#   export ANDROID_EABI=mipsel-linux-android-4.9
+#   export ANDROID_ARCH=arch-mips
+#   build_one
+# fi
 
 if [ $TARGET == 'x86_64' ]; then
   CPU=x86_64

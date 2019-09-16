@@ -7,8 +7,8 @@ android {
         applicationId "wseemann.media.fmpdemo"
         minSdkVersion 14
         targetSdkVersion 29
-        versionCode 41
-        versionName "1.0.11"
+        versionCode 42
+        versionName "1.0.17"
     }
     buildTypes {
         debug {

@@ -26,7 +26,7 @@ Overview
 FFmpegMediaMetadataRetriever is a reimplementation of Android's MediaMetadataRetriever class. The FFmpegMediaMetadataRetriever class provides a unified interface for retrieving frame and meta data from an input media file and uses FFmpeg as its backend.
 
 Key Features:
-* ARM, ARMv7, x86, x86_64, MIPS and ARM_64 support
+* ARM, ARMv7, x86, x86_64, ARM_64 support
 * Support for API 12+
 * URL support (Unlike MediaMetadataRetriever, see: http://code.google.com/p/android/issues/detail?id=35794)
 
@@ -54,7 +54,6 @@ Optionally, to support individual ABIs:
         compile 'com.github.wseemann:FFmpegMediaMetadataRetriever-armeabi:1.0.14'
         compile 'com.github.wseemann:FFmpegMediaMetadataRetriever-armeabi-v7a:1.0.14'
         compile 'com.github.wseemann:FFmpegMediaMetadataRetriever-x86:1.0.14'
-        compile 'com.github.wseemann:FFmpegMediaMetadataRetriever-mips:1.0.14'
         compile 'com.github.wseemann:FFmpegMediaMetadataRetriever-x86_64:1.0.14'
         compile 'com.github.wseemann:FFmpegMediaMetadataRetriever-arm64-v8a:1.0.14'
     }
@@ -127,7 +126,7 @@ Sample code:
     mmr.extractMetadata(FFmpegMediaMetadataRetriever.METADATA_KEY_ARTIST);
     Bitmap b = mmr.getFrameAtTime(2000000, FFmpegMediaMetadataRetriever.OPTION_CLOSEST); // frame at 2 seconds
     byte [] artwork = mmr.getEmbeddedPicture();
-    
+
     mmr.release();
 
 FFmpeg
@@ -138,7 +137,7 @@ License
 ------------
 
 ```
-FFmpegMediaMetadataRetriever: A unified interface for retrieving frame 
+FFmpegMediaMetadataRetriever: A unified interface for retrieving frame
 and meta data from an input media file.
 
 Copyright 2017 William Seemann

@@ -26,12 +26,12 @@ X86_PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/darwin-x86_64
 X86_64_PLATFORM=$NDK/platforms/android-21/arch-x86_64/
 X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/darwin-x86_64
 
-MIPS_PLATFORM=$NDK/platforms/android-9/arch-mips/
-MIPS_PREBUILT=$NDK/toolchains/mipsel-linux-android-4.9/prebuilt/darwin-x86_64
+# MIPS_PLATFORM=$NDK/platforms/android-9/arch-mips/
+# MIPS_PREBUILT=$NDK/toolchains/mipsel-linux-android-4.9/prebuilt/darwin-x86_64
 
 BUILD_DIR=`pwd`/ffmpeg-android
 
-FFMPEG_VERSION="3.0.1"
+FFMPEG_VERSION="3.4.6"
 
 if [ ! -e "ffmpeg-${FFMPEG_VERSION}.tar.bz2" ]; then
     echo "Downloading ffmpeg-${FFMPEG_VERSION}.tar.bz2"
@@ -68,11 +68,11 @@ then
     PLATFORM=$ARM64_PLATFORM
     PREBUILT=$ARM64_PREBUILT
     HOST=aarch64-linux-android
-elif [ $ARCH == "mips" ]
-then
-    PLATFORM=$MIPS_PLATFORM
-    PREBUILT=$MIPS_PREBUILT
-    HOST=mipsel-linux-android
+# elif [ $ARCH == "mips" ]
+# then
+#     PLATFORM=$MIPS_PLATFORM
+#     PREBUILT=$MIPS_PREBUILT
+#     HOST=mipsel-linux-android
 #alexvas
 elif [ $ARCH == "x86_64" ]
 then
@@ -116,25 +116,52 @@ pushd ffmpeg-$FFMPEG_VERSION
     --disable-avdevice \
     --disable-ffserver \
     --disable-doc \
-    --disable-avdevice \
+    --disable-htmlpages \
+    --disable-manpages \
+    --disable-podpages \
+    --disable-txtpages \
     --disable-swresample \
     --disable-postproc \
-    --disable-avfilter \
     --disable-gpl \
-    --disable-encoders \
     --disable-hwaccels \
+    --disable-encoders \
+    --enable-encoder=png \
+    --disable-decoders \
+    --enable-decoder=ac3 \
+    --enable-decoder=aac \
+    --enable-decoder=mp3 \
+    --enable-decoder=h264 \
+    --enable-decoder=hevc \
+    --enable-decoder=vp8 \
+    --enable-decoder=vp9 \
     --disable-muxers \
+    --disable-demuxers \
+    --enable-demuxer=aac \
+    --enable-demuxer=concat \
+    --enable-demuxer=data \
+    --enable-demuxer=mp3 \
+    --enable-demuxer=mpegps \
+    --enable-demuxer=mpegts \
+    --enable-demuxer=mpegtsraw \
+    --enable-demuxer=mpegvideo \
+    --enable-demuxer=hevc \
+    --enable-demuxer=dash \
+    --enable-demuxer=mov \
+    --enable-demuxer=webm_dash_manifest \
+    --disable-parsers \
+    --enable-parser=aac \
+    --enable-parser=h264 \
+    --enable-parser=hevc \
     --disable-bsfs \
     --disable-indevs \
     --disable-outdevs \
     --disable-devices \
     --disable-filters \
-    --enable-encoder=png \
     --disable-debug \
     --disable-asm \
     --enable-openssl \
     $ADDITIONAL_CONFIGURE_FLAG
-
+# not needed protocols disabling because of they don't increase library size
 #--disable-protocols \
 #--enable-protocol=file,http,https,mmsh,mmst,pipe,rtmp \
 
@@ -242,19 +269,19 @@ if [ $TARGET == 'i686' ]; then
     build_one
 fi
 
-if [ $TARGET == 'mips' ]; then
-    #mips
-    CPU=mips
-    ARCH=mips
-    OPTIMIZE_CFLAGS="-std=c99 -O3 -Wall -pipe -fpic -fasm \
--ftree-vectorize -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops \
--finline-limit=300 -finline-functions -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone \
--Wno-psabi -Wa,--noexecstack"
-    #PREFIX=$BUILD_DIR/$CPU
-    PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
-    ADDITIONAL_CONFIGURE_FLAG=
-    build_one
-fi
+# if [ $TARGET == 'mips' ]; then
+#     #mips
+#     CPU=mips
+#     ARCH=mips
+#     OPTIMIZE_CFLAGS="-std=c99 -O3 -Wall -pipe -fpic -fasm \
+# -ftree-vectorize -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops \
+# -finline-limit=300 -finline-functions -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone \
+# -Wno-psabi -Wa,--noexecstack"
+#     #PREFIX=$BUILD_DIR/$CPU
+#     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
+#     ADDITIONAL_CONFIGURE_FLAG=
+#     build_one
+# fi
 
 if [ $TARGET == 'armv7-a' ]; then
     #arm armv7-a

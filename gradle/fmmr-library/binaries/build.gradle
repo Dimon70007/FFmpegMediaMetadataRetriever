@@ -17,9 +17,6 @@ android {
     //def mkfile = "NDK_APPLICATION_MK=x86Application.mk"
     //def aarname = "x86-fmmr"
 
-    //def mkfile = "NDK_APPLICATION_MK=MIPSApplication.mk"
-    //def aarname = "mips-fmmr"
-
     //def mkfile = "NDK_APPLICATION_MK=x86_64Application.mk"
     //def aarname = "x86_64-fmmr"
 
@@ -29,8 +26,8 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 29
-        versionCode 16
-        versionName "1.0.14"
+        versionCode Integer.parseInt(VERSION_CODE)
+        versionName VERSION_NAME
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

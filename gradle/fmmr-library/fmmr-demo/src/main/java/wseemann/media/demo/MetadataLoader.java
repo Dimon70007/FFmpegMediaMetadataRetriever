@@ -100,11 +100,18 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
     		Bitmap b = fmmr.getFrameAtTime();
 
     		if (b != null) {
-    			Bitmap b2 = fmmr.getFrameAtTime(4000000, FFmpegMediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                Log.d(MetadataLoader.class.getName(), "any bitmap frame exists");
+                Bitmap b2 = fmmr.getFrameAtTime(1*1000*1000, FFmpegMediaMetadataRetriever.OPTION_PREVIOUS_SYNC);
     			if (b2 != null) {
+                    Log.d(MetadataLoader.class.getName(), "frameAtTime bitmap frame exists");
     				b = b2;
-    			}
-    		}
+    			} else {
+                    Log.d(MetadataLoader.class.getName(), "frameAtTime bitmap frame is null");
+                }
+
+    		} else {
+                Log.d(MetadataLoader.class.getName(), "any bitmap frame is null");
+            }
     		
     		if (b != null) {
     			metadata.add(new Metadata("image", b));

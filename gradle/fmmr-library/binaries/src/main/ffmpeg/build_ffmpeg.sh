@@ -26,9 +26,6 @@ X86_PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/darwin-x86_64
 X86_64_PLATFORM=$NDK/platforms/android-21/arch-x86_64/
 X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/darwin-x86_64
 
-MIPS_PLATFORM=$NDK/platforms/android-9/arch-mips/
-MIPS_PREBUILT=$NDK/toolchains/mipsel-linux-android-4.9/prebuilt/darwin-x86_64
-
 BUILD_DIR=`pwd`/ffmpeg-android
 
 FFMPEG_VERSION="3.0.1"
@@ -60,11 +57,6 @@ then
     PLATFORM=$ARM64_PLATFORM
     PREBUILT=$ARM64_PREBUILT
     HOST=aarch64-linux-android
-elif [ $ARCH == "mips" ]
-then
-    PLATFORM=$MIPS_PLATFORM
-    PREBUILT=$MIPS_PREBUILT
-    HOST=mipsel-linux-android
 #alexvas
 elif [ $ARCH == "x86_64" ]
 then
@@ -232,19 +224,19 @@ if [ $TARGET == 'i686' ]; then
     build_one
 fi
 
-if [ $TARGET == 'mips' ]; then
-    #mips
-    CPU=mips
-    ARCH=mips
-    OPTIMIZE_CFLAGS="-std=c99 -O3 -Wall -pipe -fpic -fasm \
--ftree-vectorize -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops \
--finline-limit=300 -finline-functions -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone \
--Wno-psabi -Wa,--noexecstack"
-    #PREFIX=$BUILD_DIR/$CPU
-    PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
-    ADDITIONAL_CONFIGURE_FLAG=
-    build_one
-fi
+# if [ $TARGET == 'mips' ]; then
+#     #mips
+#     CPU=mips
+#     ARCH=mips
+#     OPTIMIZE_CFLAGS="-std=c99 -O3 -Wall -pipe -fpic -fasm \
+# -ftree-vectorize -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops \
+# -finline-limit=300 -finline-functions -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone \
+# -Wno-psabi -Wa,--noexecstack"
+#     #PREFIX=$BUILD_DIR/$CPU
+#     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
+#     ADDITIONAL_CONFIGURE_FLAG=
+#     build_one
+# fi
 
 if [ $TARGET == 'armv7-a' ]; then
     #arm armv7-a

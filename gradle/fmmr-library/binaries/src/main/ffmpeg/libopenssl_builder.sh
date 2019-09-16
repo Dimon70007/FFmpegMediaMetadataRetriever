@@ -35,8 +35,8 @@ ARCHS=(
     arm64-v8a
     armeabi
     armeabi-v7a
-    mips
-    mips64
+    # mips
+    # mips64
     x86_64
 )
 
@@ -46,8 +46,8 @@ TOOLS=(
     aarch64-linux-android
     arm-linux-androideabi
     arm-linux-androideabi
-    mipsel-linux-android
-    mips64el-linux-android
+    # mipsel-linux-android
+    # mips64el-linux-android
     x86_64
 )
 
@@ -57,8 +57,8 @@ HOSTS=(
     aarch64-linux-android
     arm-linux-androideabi
     arm-linux-androideabi
-    mipsel-linux-android
-    mips64el-linux-android
+    # mipsel-linux-android
+    # mips64el-linux-android
     x86_64-linux-android
 )
 
@@ -68,8 +68,8 @@ SYSROOTS=(
     arch-arm64
     arch-arm
     arch-arm
-    arch-mips
-    arch-mips64
+    # arch-mips
+    # arch-mips64
     arch-x86_64
 )
 
@@ -79,8 +79,8 @@ OPENSSL_OS=(
     linux-generic64
     linux-generic32
     linux-generic32
-    linux-generic32
-    linux-generic64
+    # linux-generic32
+    # linux-generic64
     linux-generic64
 )
 
