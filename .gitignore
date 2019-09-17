@@ -1,11 +1,16 @@
 gradle/fmmr-library/binaries/src/main/ffmpeg/difs
+gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg*
+gradle/fmmr-library/binaries/src/main/ffmpeg/openssl*
+gradle/fmmr-library/binaries/src/main/obj
+gradle/fmmr-library/binaries/src/main/libs
 gradle/fmmr-library/binaries/src/main/ffmpeg/*.tar.gz
 !gradle/fmmr-library/binaries/src/main/ffmpeg/*.sh
 .DS_Store
 
 .gradle
 build/
-
+.idea
+.iml
 # Ignore Gradle GUI config
 gradle-app.setting
 

@@ -24,13 +24,22 @@ import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Rect;
 import android.net.Uri;
+import android.util.Log;
 import android.view.Surface;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -377,13 +386,35 @@ public class FFmpegMediaMetadataRetriever
         BitmapFactory.Options bitmapOptionsCache = new BitmapFactory.Options();
         //bitmapOptionsCache.inPreferredConfig = getInPreferredConfig();
         bitmapOptionsCache.inDither = false;
-    	
-        byte [] picture = _getFrameAtTime(timeUs, option);
-        
-        if (picture != null) {
-        	b = BitmapFactory.decodeByteArray(picture, 0, picture.length, bitmapOptionsCache);
+        BufferedInputStream inputStream = null;
+        try{
+            bitmapOptionsCache.inJustDecodeBounds = true;
+            inputStream = new BufferedInputStream(new ByteArrayInputStream(_getFrameAtTime(timeUs, option)));
+            b = BitmapFactory.decodeStream(inputStream, null, bitmapOptionsCache);
+
+            int height = bitmapOptionsCache.outHeight;
+            int width = bitmapOptionsCache.outWidth;
+
+            bitmapOptionsCache.inSampleSize = calculateInSampleSize(bitmapOptionsCache,500,500);
+            bitmapOptionsCache.inJustDecodeBounds = false;
+
+            b = BitmapFactory.decodeStream(inputStream, null, bitmapOptionsCache);
+
+        }catch(Exception e) {
+            Log.e(this.getClass().getName(), "Error till decoding bitmap",e);
         }
-        
+        try{
+            inputStream.close();
+        }catch (Exception e) {
+            Log.e(this.getClass().getName(), "Error in inputStream",e);
+        }
+//        if (byteArrayInputStream.available() != null) {
+//            Log.d(this.getClass().getName(), String.format("picture size is %d", picture.length);
+//            b = BitmapFactory.decodeByteArray(picture, 0, picture.length, bitmapOptionsCache);
+//        } else {
+//            Log.d(this.getClass().getName(), String.format("picture is null");
+//
+//        }
         return b;
     }
 
@@ -408,19 +439,7 @@ public class FFmpegMediaMetadataRetriever
      * @see #getFrameAtTime(long, int)
      */
     public Bitmap getFrameAtTime(long timeUs) {
-    	Bitmap b = null;
-    	
-        BitmapFactory.Options bitmapOptionsCache = new BitmapFactory.Options();
-        //bitmapOptionsCache.inPreferredConfig = getInPreferredConfig();
-        bitmapOptionsCache.inDither = false;
-    	
-        byte [] picture = _getFrameAtTime(timeUs, OPTION_CLOSEST_SYNC);
-        
-        if (picture != null) {
-        	b = BitmapFactory.decodeByteArray(picture, 0, picture.length, bitmapOptionsCache);
-        }
-        
-        return b;
+    	return getFrameAtTime(timeUs, OPTION_CLOSEST_SYNC);
     }
     
     /**
@@ -438,7 +457,7 @@ public class FFmpegMediaMetadataRetriever
      * @see #getFrameAtTime(long, int)
      */
     public Bitmap getFrameAtTime() {
-        return getFrameAtTime(-1, OPTION_CLOSEST_SYNC);
+        return getFrameAtTime(0);
     }
     
     private native byte [] _getFrameAtTime(long timeUs, int option);
@@ -499,7 +518,7 @@ public class FFmpegMediaMetadataRetriever
      * and returns it as a bitmap. This is useful for generating a thumbnail
      * for an input data source. Call this method if one does not care
      * how the frame is found as long as it is close to the given time;
-     * otherwise, please call {@link #getScaledFrameAtTime(long, int)}.
+     * otherwise, please call {@link #getScaledFrameAtTime(long, int, int, int)}.
      *
      * @param timeUs The time position where the frame will be retrieved.
      * When retrieving the frame at the given time position, there is no
@@ -511,7 +530,7 @@ public class FFmpegMediaMetadataRetriever
      * @return A Bitmap containing a representative video frame, which
      *         can be null, if such a frame cannot be retrieved.
      *
-     * @see #getScaledFrameAtTime(long, int)
+     * @see #getScaledFrameAtTime(long, int, int, int)
      */
     public Bitmap getScaledFrameAtTime(long timeUs, int width, int height) {
         Bitmap b = null;
@@ -527,6 +546,30 @@ public class FFmpegMediaMetadataRetriever
         }
 
         return b;
+    }
+
+    public static int calculateInSampleSize(
+            BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        // Raw height and width of image
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+        Log.d(FFmpegMediaMetadataRetriever.class.getName(), String.format("options: width: %d, height: %d", width, height));
+
+        if (height > reqHeight || width > reqWidth) {
+
+            final int halfHeight = height / 2;
+            final int halfWidth = width / 2;
+
+            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+            // height and width larger than the requested height and width.
+            while ((halfHeight / inSampleSize) >= reqHeight
+                    && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2;
+            }
+        }
+
+        return inSampleSize;
     }
 
     private native byte [] _getScaledFrameAtTime(long timeUs, int option, int width, int height);

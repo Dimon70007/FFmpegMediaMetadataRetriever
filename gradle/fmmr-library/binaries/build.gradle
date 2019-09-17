@@ -26,7 +26,7 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 29
-        versionCode Integer.parseInt(VERSION_CODE)
+        versionCode = 17
         versionName VERSION_NAME
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -34,8 +34,17 @@ android {
 
     buildTypes {
         release {
+            debuggable = false
+            jniDebuggable = false
+            renderscriptDebuggable = false
+
             //minifyEnabled false
             //proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            jniDebuggable = true
+            renderscriptDebuggable = true
+            signingConfig signingConfigs.debug
         }
     }
     sourceSets.main {
@@ -66,6 +75,7 @@ android {
                 '-C', file('src/main/jni').absolutePath, // Change src/main/jni the relative path to your jni source
                 'clean'
     }
+    buildToolsVersion = '29.0.0'
 
     clean.dependsOn 'cleanNative'
     buildNative.dependsOn 'buildFFmpeg'

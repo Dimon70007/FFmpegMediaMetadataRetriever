@@ -28,7 +28,7 @@ X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/darwin-x86_64
 
 BUILD_DIR=`pwd`/ffmpeg-android
 
-FFMPEG_VERSION="3.0.1"
+FFMPEG_VERSION="3.4.6"
 
 if [ ! -e "ffmpeg-${FFMPEG_VERSION}.tar.bz2" ]; then
     echo "Downloading ffmpeg-${FFMPEG_VERSION}.tar.bz2"
