@@ -7,6 +7,13 @@
 # See http://wiki.openssl.org/index.php/FIPS_Library_and_Android
 #   and http://wiki.openssl.org/index.php/Android
 
+if [ -z "$PLATFORM_X32" ]; then
+  echo "--------------------------------------------------------------"
+  echo "Attention PLATFORM_X32 variable not specified"
+  echo "You should specify variables in min_support_platforms.sh first"
+  echo "--------------------------------------------------------------"
+  exit 1
+fi
 if [ $# -ne 3 ];
   then echo "illegal number of parameters"
   echo "usage: Setenv-android.sh ANDROID_NDK_ROOT ANDROID_EABI ANDROID_ARCH"
@@ -26,7 +33,7 @@ export ANDROID_ARCH=$3
 # ANDROID_NDK_ROOT is set, then the value is ignored.
 # _ANDROID_NDK="android-ndk-r8e"
 # _ANDROID_NDK="android-ndk-r9"
-_ANDROID_NDK="android-ndk-r11c"
+_ANDROID_NDK="android-ndk-r14b"
 # _ANDROID_NDK="android-ndk-r10"
 
 # Set _ANDROID_EABI to the EABI you want to use. You can find the
@@ -45,9 +52,9 @@ _ANDROID_ARCH=$ANDROID_ARCH
 # to one of: android-14, android-9, android-8, android-14, android-5
 # android-4, or android-3. You can't set it to the latest (for
 # example, API-17) because the NDK does not supply the platform. At
-# Android 5.0, there will likely be another platform added (android-22?).
+# Android 5.0, there will likely be another platform added (android-21).
 # This value is always used.
-_ANDROID_API="android-14"
+_ANDROID_API=$PLATFORM_X32
 # _ANDROID_API="android-9"
 # _ANDROID_API="android-19"
 
@@ -87,22 +94,22 @@ fi
 # http://groups.google.com/group/android-ndk/browse_thread/thread/a998e139aca71d77
 if [ -z "$ANDROID_NDK_ROOT" ] || [ ! -d "$ANDROID_NDK_ROOT" ]; then
   echo "Error: ANDROID_NDK_ROOT is not a valid path. Please edit this script."
-  # echo "$ANDROID_NDK_ROOT"
-  # exit 1
+  echo "$ANDROID_NDK_ROOT"
+  exit 1
 fi
 
 # Error checking
 if [ ! -d "$ANDROID_NDK_ROOT/toolchains" ]; then
   echo "Error: ANDROID_NDK_ROOT/toolchains is not a valid path. Please edit this script."
-  # echo "$ANDROID_NDK_ROOT/toolchains"
-  # exit 1
+  echo "$ANDROID_NDK_ROOT/toolchains"
+  exit 1
 fi
 
 # Error checking
 if [ ! -d "$ANDROID_NDK_ROOT/toolchains/$_ANDROID_EABI" ]; then
   echo "Error: ANDROID_EABI is not a valid path. Please edit this script."
-  # echo "$ANDROID_NDK_ROOT/toolchains/$_ANDROID_EABI"
-  # exit 1
+  echo "$ANDROID_NDK_ROOT/toolchains/$_ANDROID_EABI"
+  exit 1
 fi
 
 #####################################################################
@@ -125,30 +132,30 @@ done
 # Error checking
 if [ -z "$ANDROID_TOOLCHAIN" ] || [ ! -d "$ANDROID_TOOLCHAIN" ]; then
   echo "Error: ANDROID_TOOLCHAIN is not valid. Please edit this script."
-  # echo "$ANDROID_TOOLCHAIN"
-  # exit 1
+  echo "$ANDROID_TOOLCHAIN"
+  exit 1
 fi
 
 case $_ANDROID_ARCH in
 	arch-arm)
       ANDROID_TOOLS="arm-linux-androideabi-gcc arm-linux-androideabi-ranlib arm-linux-androideabi-ld"
-      _ANDROID_API="android-9"
+      _ANDROID_API=$PLATFORM_X32
 	  ;;
 	arch-x86)
       ANDROID_TOOLS="i686-linux-android-gcc i686-linux-android-ranlib i686-linux-android-ld"
-      _ANDROID_API="android-9"
+      _ANDROID_API=$PLATFORM_X32
 	  ;;
-    # arch-mips)
-    #   ANDROID_TOOLS="mipsel-linux-android-gcc mipsel-linux-android-ranlib mipsel-linux-android-ld"
-    #   _ANDROID_API="android-9"
-    #   ;;
+    arch-mips)
+      ANDROID_TOOLS="mipsel-linux-android-gcc mipsel-linux-android-ranlib mipsel-linux-android-ld"
+      _ANDROID_API=$PLATFORM_DEPRECATED
+      ;;
     arch-x86_64)
       ANDROID_TOOLS="x86_64-linux-android-gcc x86_64-linux-android-ranlib x86_64-linux-android-ld"
-      _ANDROID_API="android-21"
+      _ANDROID_API=$PLATFORM_X64
       ;;
     arch-arm64)
       ANDROID_TOOLS="aarch64-linux-android-gcc aarch64-linux-android-ranlib aarch64-linux-android-ld"
-      _ANDROID_API="android-21"
+      _ANDROID_API=$PLATFORM_X64
       ;;
 	*)
 	  echo "ERROR ERROR ERROR"
@@ -160,8 +167,8 @@ do
   # Error checking
   if [ ! -e "$ANDROID_TOOLCHAIN/$tool" ]; then
     echo "Error: Failed to find $tool. Please edit this script."
-    # echo "$ANDROID_TOOLCHAIN/$tool"
-    # exit 1
+    echo "$ANDROID_TOOLCHAIN/$tool"
+    exit 1
   fi
 done
 
@@ -182,8 +189,8 @@ export NDK_SYSROOT="$ANDROID_SYSROOT"
 # Error checking
 if [ -z "$ANDROID_SYSROOT" ] || [ ! -d "$ANDROID_SYSROOT" ]; then
   echo "Error: ANDROID_SYSROOT is not valid. Please edit this script."
-  # echo "$ANDROID_SYSROOT"
-  # exit 1
+  echo "$ANDROID_SYSROOT"
+  exit 1
 fi
 
 #####################################################################
@@ -211,7 +218,7 @@ fi
 # Error checking. Its OK to ignore this if you are *not* building for FIPS
 if [ -z "$FIPS_SIG" ] || [ ! -e "$FIPS_SIG" ]; then
   echo "Error: FIPS_SIG does not specify incore module. Please edit this script."
-  # echo "$FIPS_SIG"
+  echo "$FIPS_SIG"
   # exit 1
 fi
 

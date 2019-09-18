@@ -11,19 +11,25 @@ set -e
 #    echo "NDK variable not set or path to NDK is invalid, exiting..."
 #    exit 1
 #fi
-
+if [ -z "$PLATFORM_X32" ]; then
+  echo "--------------------------------------------------------------"
+  echo "Attention PLATFORM_X32 variable not specified"
+  echo "You should specify variables in min_support_platforms.sh first"
+  echo "--------------------------------------------------------------"
+  exit 1
+fi
 export TARGET=$1
 
-ARM_PLATFORM=$NDK/platforms/android-9/arch-arm/
+ARM_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-arm/
 ARM_PREBUILT=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64
 
-ARM64_PLATFORM=$NDK/platforms/android-21/arch-arm64/
+ARM64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-arm64/
 ARM64_PREBUILT=$NDK/toolchains/aarch64-linux-android-4.9/prebuilt/darwin-x86_64
 
-X86_PLATFORM=$NDK/platforms/android-9/arch-x86/
+X86_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-x86/
 X86_PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/darwin-x86_64
 
-X86_64_PLATFORM=$NDK/platforms/android-21/arch-x86_64/
+X86_64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-x86_64/
 X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/darwin-x86_64
 
 BUILD_DIR=`pwd`/ffmpeg-android
@@ -37,7 +43,7 @@ else
     echo "Using ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 fi
 
-tar -xvf ffmpeg-${FFMPEG_VERSION}.tar.bz2
+tar -xf ffmpeg-${FFMPEG_VERSION}.tar.bz2  && echo "ffmpeg-${FFMPEG_VERSION}.tar.bz2 has been extracted"
 
 for i in `find diffs -type f`; do
     (cd ffmpeg-${FFMPEG_VERSION} && patch -p1 < ../$i)
@@ -46,89 +52,89 @@ done
 
 function build_one
 {
-if [ $ARCH == "arm" ]
-then
-    PLATFORM=$ARM_PLATFORM
-    PREBUILT=$ARM_PREBUILT
-    HOST=arm-linux-androideabi
-#added by alexvas
-elif [ $ARCH == "arm64" ]
-then
-    PLATFORM=$ARM64_PLATFORM
-    PREBUILT=$ARM64_PREBUILT
-    HOST=aarch64-linux-android
-#alexvas
-elif [ $ARCH == "x86_64" ]
-then
-    PLATFORM=$X86_64_PLATFORM
-    PREBUILT=$X86_64_PREBUILT
-    HOST=x86_64-linux-android
-else
-    PLATFORM=$X86_PLATFORM
-    PREBUILT=$X86_PREBUILT
-    HOST=i686-linux-android
-fi
+    if [ $ARCH == "arm" ]
+    then
+        PLATFORM=$ARM_PLATFORM
+        PREBUILT=$ARM_PREBUILT
+        HOST=arm-linux-androideabi
+    #added by alexvas
+    elif [ $ARCH == "arm64" ]
+    then
+        PLATFORM=$ARM64_PLATFORM
+        PREBUILT=$ARM64_PREBUILT
+        HOST=aarch64-linux-android
+    #alexvas
+    elif [ $ARCH == "x86_64" ]
+    then
+        PLATFORM=$X86_64_PLATFORM
+        PREBUILT=$X86_64_PREBUILT
+        HOST=x86_64-linux-android
+    else
+        PLATFORM=$X86_PLATFORM
+        PREBUILT=$X86_PREBUILT
+        HOST=i686-linux-android
+    fi
 
-#    --prefix=$PREFIX \
+    #    --prefix=$PREFIX \
 
-#--incdir=$BUILD_DIR/include \
-#--libdir=$BUILD_DIR/lib/$CPU \
+    #--incdir=$BUILD_DIR/include \
+    #--libdir=$BUILD_DIR/lib/$CPU \
 
-#    --extra-cflags="-fvisibility=hidden -fdata-sections -ffunction-sections -Os -fPIC -DANDROID -DHAVE_SYS_UIO_H=1 -Dipv6mr_interface=ipv6mr_ifindex -fasm -Wno-psabi -fno-short-enums -fno-strict-aliasing -finline-limit=300 $OPTIMIZE_CFLAGS " \
-#    --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog" \
+    #    --extra-cflags="-fvisibility=hidden -fdata-sections -ffunction-sections -Os -fPIC -DANDROID -DHAVE_SYS_UIO_H=1 -Dipv6mr_interface=ipv6mr_ifindex -fasm -Wno-psabi -fno-short-enums -fno-strict-aliasing -finline-limit=300 $OPTIMIZE_CFLAGS " \
+    #    --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog" \
 
-# TODO Adding aac decoder brings "libnative.so has text relocations. This is wasting memory and prevents security hardening. Please fix." message in Android.
-pushd ffmpeg-$FFMPEG_VERSION
-./configure --target-os=linux \
-    --incdir=$BUILD_DIR/$TARGET/include \
-    --libdir=$BUILD_DIR/$TARGET/lib \
-    --enable-cross-compile \
-    --extra-libs="-lgcc" \
-    --arch=$ARCH \
-    --cc=$PREBUILT/bin/$HOST-gcc \
-    --cross-prefix=$PREBUILT/bin/$HOST- \
-    --nm=$PREBUILT/bin/$HOST-nm \
-    --sysroot=$PLATFORM \
-    --extra-cflags="$OPTIMIZE_CFLAGS " \
-    --enable-shared \
-    --enable-small \
-    --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog" \
-    --disable-ffplay \
-    --disable-ffmpeg \
-    --disable-ffprobe \
-    --disable-avfilter \
-    --disable-avdevice \
-    --disable-ffserver \
-    --disable-doc \
-    --disable-avdevice \
-    --disable-swresample \
-    --disable-postproc \
-    --disable-avfilter \
-    --disable-gpl \
-    --disable-encoders \
-    --disable-hwaccels \
-    --disable-muxers \
-    --disable-bsfs \
-    --disable-protocols \
-    --disable-indevs \
-    --disable-outdevs \
-    --disable-devices \
-    --disable-filters \
-    --enable-encoder=png \
-    --enable-protocol=file,http,https,mmsh,mmst,pipe,rtmp,rtmps,rtmpt,rtmpts,rtp \
-    --disable-debug \
-    --disable-asm \
-    $ADDITIONAL_CONFIGURE_FLAG
+    # TODO Adding aac decoder brings "libnative.so has text relocations. This is wasting memory and prevents security hardening. Please fix." message in Android.
+    pushd ffmpeg-$FFMPEG_VERSION
+    ./configure --target-os=linux \
+        --incdir=$BUILD_DIR/$TARGET/include \
+        --libdir=$BUILD_DIR/$TARGET/lib \
+        --enable-cross-compile \
+        --extra-libs="-lgcc" \
+        --arch=$ARCH \
+        --cc=$PREBUILT/bin/$HOST-gcc \
+        --cross-prefix=$PREBUILT/bin/$HOST- \
+        --nm=$PREBUILT/bin/$HOST-nm \
+        --sysroot=$PLATFORM \
+        --extra-cflags="$OPTIMIZE_CFLAGS " \
+        --enable-shared \
+        --enable-small \
+        --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog" \
+        --disable-ffplay \
+        --disable-ffmpeg \
+        --disable-ffprobe \
+        --disable-avfilter \
+        --disable-avdevice \
+        --disable-ffserver \
+        --disable-doc \
+        --disable-avdevice \
+        --disable-swresample \
+        --disable-postproc \
+        --disable-avfilter \
+        --disable-gpl \
+        --disable-encoders \
+        --disable-hwaccels \
+        --disable-muxers \
+        --disable-bsfs \
+        --disable-protocols \
+        --disable-indevs \
+        --disable-outdevs \
+        --disable-devices \
+        --disable-filters \
+        --enable-encoder=png \
+        --enable-protocol=file,http,https,mmsh,mmst,pipe,rtmp,rtmps,rtmpt,rtmpts,rtp \
+        --disable-debug \
+        --disable-asm \
+        $ADDITIONAL_CONFIGURE_FLAG
 
-make clean
-make -j8 install V=1
-$PREBUILT/bin/$HOST-ar d libavcodec/libavcodec.a inverse.o
-#$PREBUILT/bin/$HOST-ld -rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -soname libffmpeg.so -shared -nostdlib  -z,noexecstack -Bsymbolic --whole-archive --no-undefined -o $PREFIX/libffmpeg.so libavcodec/libavcodec.a libavformat/libavformat.a libavutil/libavutil.a libswscale/libswscale.a -lc -lm -lz -ldl -llog  --warn-once  --dynamic-linker=/system/bin/linker $PREBUILT/lib/gcc/$HOST/4.6/libgcc.a
-popd
+    make clean
+    make -j8 install V=1
+    $PREBUILT/bin/$HOST-ar d libavcodec/libavcodec.a inverse.o
+    #$PREBUILT/bin/$HOST-ld -rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -soname libffmpeg.so -shared -nostdlib  -z,noexecstack -Bsymbolic --whole-archive --no-undefined -o $PREFIX/libffmpeg.so libavcodec/libavcodec.a libavformat/libavformat.a libavutil/libavutil.a libswscale/libswscale.a -lc -lm -lz -ldl -llog  --warn-once  --dynamic-linker=/system/bin/linker $PREBUILT/lib/gcc/$HOST/4.6/libgcc.a
+    popd
 
-# copy the binaries
-mkdir -p $PREFIX
-cp -r $BUILD_DIR/$TARGET/* $PREFIX
+    # copy the binaries
+    mkdir -p $PREFIX
+    cp -r $BUILD_DIR/$TARGET/* $PREFIX
 }
 
 if [ $TARGET == 'arm-v5te' ]; then
@@ -224,19 +230,19 @@ if [ $TARGET == 'i686' ]; then
     build_one
 fi
 
-# if [ $TARGET == 'mips' ]; then
-#     #mips
-#     CPU=mips
-#     ARCH=mips
-#     OPTIMIZE_CFLAGS="-std=c99 -O3 -Wall -pipe -fpic -fasm \
-# -ftree-vectorize -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops \
-# -finline-limit=300 -finline-functions -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone \
-# -Wno-psabi -Wa,--noexecstack"
-#     #PREFIX=$BUILD_DIR/$CPU
-#     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
-#     ADDITIONAL_CONFIGURE_FLAG=
-#     build_one
-# fi
+ if [ $TARGET == 'mips' ]; then
+     #mips
+     CPU=mips
+     ARCH=mips
+     OPTIMIZE_CFLAGS="-std=c99 -O3 -Wall -pipe -fpic -fasm \
+ -ftree-vectorize -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops \
+ -finline-limit=300 -finline-functions -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone \
+ -Wno-psabi -Wa,--noexecstack"
+     #PREFIX=$BUILD_DIR/$CPU
+     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
+     ADDITIONAL_CONFIGURE_FLAG=
+     build_one
+ fi
 
 if [ $TARGET == 'armv7-a' ]; then
     #arm armv7-a

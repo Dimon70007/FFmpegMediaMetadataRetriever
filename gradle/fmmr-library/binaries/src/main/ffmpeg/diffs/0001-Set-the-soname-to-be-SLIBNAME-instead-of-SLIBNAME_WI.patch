@@ -1,17 +1,23 @@
-William Seemann <wseemann@gmail.com>
-
-[PATCH 1/3] Set the soname to be $(SLIBNAME) instead of $(SLIBNAME_WITH_MAJOR)
+From 4441b69ce296824a584f2a5e7298aed8485005e5 Mon Sep 17 00:00:00 2001
+From: Dmitriy Grachev <dmitriy.grachev@erlyvideo.org>
+Date: Tue, 17 Sep 2019 12:17:46 +0300
+Subject: [PATCH 1/2] Set the soname to be $(SLIBNAME) instead of
+ $(SLIBNAME_WITH_MAJOR)
 
 Both due to the ways the android linker works, and due to the apk
 builder that only includes files named *.so, we want to have the libs
 named and refer to each other in the form lib<name>.so.
 ---
+ ffbuild/library.mak | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
---- a/library.mak	2015-01-09 22:21:07.000000000 -0600
-+++ b/library.mak	2015-01-17 15:02:44.000000000 -0600
-@@ -53,16 +53,13 @@
- $(TESTPROGS) $(TOOLS): %$(EXESUF): %.o $(EXEOBJS)
- 	$$(LD) $(LDFLAGS) $(LDEXEFLAGS) $$(LD_O) $$(filter %.o,$$^) $$(THISLIB) $(FFEXTRALIBS) $$(ELIBS)
+diff --git a/ffbuild/library.mak b/ffbuild/library.mak
+index 4191edcf9c..6c1e3ac8ef 100644
+--- a/ffbuild/library.mak
++++ b/ffbuild/library.mak
+@@ -43,16 +43,13 @@ $(SUBDIR)lib$(FULLNAME).pc: $(SUBDIR)version.h | $(SUBDIR)
+ $(SUBDIR)lib$(NAME).ver: $(SUBDIR)lib$(NAME).v $(OBJS)
+ 	$$(M)sed 's/MAJOR/$(lib$(NAME)_VERSION_MAJOR)/' $$< | $(VERSION_SCRIPT_POSTPROCESS_CMD) > $$@
  
 -$(SUBDIR)$(SLIBNAME): $(SUBDIR)$(SLIBNAME_WITH_MAJOR)
 -	$(Q)cd ./$(SUBDIR) && $(LN_S) $(SLIBNAME_WITH_MAJOR) $(SLIBNAME)
@@ -28,3 +34,6 @@ named and refer to each other in the form lib<name>.so.
  endif
  
  clean::
+-- 
+2.20.1 (Apple Git-117)
+

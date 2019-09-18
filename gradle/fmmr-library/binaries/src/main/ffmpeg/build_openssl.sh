@@ -2,13 +2,20 @@
 # Cross-compile environment for Android on ARMv7 and x86
 #
 
-export WORKING_DIR=`pwd`
 export PROPS=$WORKING_DIR/../../../../local.properties
 
 export NDK=`grep ndk.dir $PROPS | cut -d'=' -f2`
 
 if [ "$NDK" = "" ] || [ ! -d $NDK ]; then
   echo "NDK variable not set or path to NDK is invalid, exiting..."
+  exit 1
+fi
+
+if [ -z "$PLATFORM_X32" ]; then
+  echo "--------------------------------------------------------------"
+  echo "Attention PLATFORM_X32 variable not specified"
+  echo "You should specify variables in min_support_platforms.sh first"
+  echo "--------------------------------------------------------------"
   exit 1
 fi
 
@@ -22,24 +29,24 @@ fi
 
 export TARGET=$1
 
-ARM_PLATFORM=$NDK/platforms/android-9/arch-arm/
+ARM_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-arm/
 ARM_PREBUILT=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64
 
-ARM64_PLATFORM=$NDK/platforms/android-21/arch-arm64/
+ARM64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-arm64/
 ARM64_PREBUILT=$NDK/toolchains/aarch64-linux-android-4.9/prebuilt/darwin-x86_64
 
-X86_PLATFORM=$NDK/platforms/android-9/arch-x86/
+X86_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-x86/
 X86_PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/darwin-x86_64
 
-X86_64_PLATFORM=$NDK/platforms/android-21/arch-x86_64/
+X86_64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-x86_64/
 X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/darwin-x86_64
 
-# MIPS_PLATFORM=$NDK/platforms/android-9/arch-mips/
+# MIPS_PLATFORM=$NDK/platforms/${PLATFORM_DEPRECATED}/arch-mips/
 # MIPS_PREBUILT=$NDK/toolchains/mipsel-linux-android-4.9/prebuilt/darwin-x86_64
 
 BUILD_DIR=`pwd`/openssl-android
 
-OPENSSL_VERSION="1.0.2j"
+OPENSSL_VERSION="1.0.2n"
 
 if [ ! -e "openssl-${OPENSSL_VERSION}.tar.gz" ]; then
   echo "Downloading openssl-${OPENSSL_VERSION}.tar.gz"
@@ -53,87 +60,108 @@ then
     rm -rf openssl-${OPENSSL_VERSION}
 fi
 
-tar -xvf openssl-${OPENSSL_VERSION}.tar.gz
-
+tar -xf openssl-${OPENSSL_VERSION}.tar.gz  && echo "openssl-${OPENSSL_VERSION}.tar.gz has been extracted"
 function build_one
 {
-if [ $ARCH == "arm" ]
-then
-    PLATFORM=$ARM_PLATFORM
-    PREBUILT=$ARM_PREBUILT
-    HOST=arm-linux-androideabi
-#added by alexvas
-elif [ $ARCH == "arm64" ]
-then
-    PLATFORM=$ARM64_PLATFORM
-    PREBUILT=$ARM64_PREBUILT
-    HOST=aarch64-linux-android
-# elif [ $ARCH == "mips" ]
-# then
-#     PLATFORM=$MIPS_PLATFORM
-#     PREBUILT=$MIPS_PREBUILT
-#     HOST=mipsel-linux-android
-#alexvas
-elif [ $ARCH == "x86_64" ]
-then
-    PLATFORM=$X86_64_PLATFORM
-    PREBUILT=$X86_64_PREBUILT
-    HOST=x86_64-linux-android
-else
-    PLATFORM=$X86_PLATFORM
-    PREBUILT=$X86_PREBUILT
-    HOST=i686-linux-android
-fi
+    if [ $ARCH == "arm" ]
+    then
+        PLATFORM=$ARM_PLATFORM
+        PREBUILT=$ARM_PREBUILT
+        HOST=arm-linux-androideabi
+    #added by alexvas
+    elif [ $ARCH == "arm64" ]
+    then
+        PLATFORM=$ARM64_PLATFORM
+        PREBUILT=$ARM64_PREBUILT
+        HOST=aarch64-linux-android
+     elif [ $ARCH == "mips" ]
+     then
+         PLATFORM=$MIPS_PLATFORM
+         PREBUILT=$MIPS_PREBUILT
+         HOST=mipsel-linux-android
+    #alexvas
+    elif [ $ARCH == "x86_64" ]
+    then
+        PLATFORM=$X86_64_PLATFORM
+        PREBUILT=$X86_64_PREBUILT
+        HOST=x86_64-linux-android
+    else
+        PLATFORM=$X86_PLATFORM
+        PREBUILT=$X86_PREBUILT
+        HOST=i686-linux-android
+    fi
 
-INSTALL_DIR=`pwd`/openssl-android/$CPU
-mkdir -p $INSTALL_DIR
+    INSTALL_DIR=`pwd`/openssl-android/$CPU
+    mkdir -p $INSTALL_DIR
 
-. ./Setenv-android.sh $NDK $ANDROID_EABI $ANDROID_ARCH
-cd openssl-${OPENSSL_VERSION}
+    . ./Setenv-android.sh $NDK $ANDROID_EABI $ANDROID_ARCH
+    cd openssl-${OPENSSL_VERSION}
 
-# if [ $TARGET == "mips" ]
-# then
-#     ./Configure android-mips shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
-elif [ $TARGET == "x86_64" ]
-then
-    #./Configure linux-generic64 shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
-    . ../libopenssl_builder.sh -s `pwd` -n $NDK -o $BUILD_DIR -b 6
+    if [ $TARGET == "mips" ]
+    then
+      echo "does not works"
+      echo "TODO - replace with calling libopenssl_builder.sh"
+      exit 1
+         ./Configure android-mips shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
+    elif [ $TARGET == "x86_64" ]
+    then
+        #./Configure linux-generic64 shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
+        . ../libopenssl_builder.sh -s `pwd` -n $NDK -o $BUILD_DIR -b 6 -p $PLATFORM_X64
+
+        # copy the binaries
+        mkdir -p $PREFIX
+        cp -r $BUILD_DIR/$CPU/* $PREFIX
+
+        exit 0
+    elif [ $TARGET == "arm64-v8a" ]
+    then
+        . ../libopenssl_builder.sh -s `pwd` -n $NDK -o $BUILD_DIR -b 1 -p $PLATFORM_X64
+
+        # copy the binaries
+        mkdir -p $PREFIX
+        cp -r $BUILD_DIR/$CPU/* $PREFIX
+
+        exit 0
+    elif [ $TARGET == "armv7-a" ]
+    then
+        . ../libopenssl_builder.sh -s `pwd` -n $NDK -o $BUILD_DIR -b 3 -p $PLATFORM_X32
+        # copy the binaries
+        mkdir -p $PREFIX
+        cp -r $BUILD_DIR/$CPU/* $PREFIX
+
+        exit 0
+    elif [ $TARGET == "i686" ]
+    then
+        . ../libopenssl_builder.sh -s `pwd` -n $NDK -o $BUILD_DIR -b 0 -p $PLATFORM_X32
+        # copy the binaries
+        mkdir -p $PREFIX
+        cp -r $BUILD_DIR/$CPU/* $PREFIX
+
+        exit 0
+    else
+      echo "does not works"
+      echo "TODO - replace with calling libopenssl_builder.sh"
+      exit 1
+        ./Configure shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
+
+        # Remove the version from the soname generated by the makefile
+        echo "Modify openssl makefile to remove version from soname"
+        sed -i.bak 's/^SHLIB_EXT=\.so\..*/SHLIB_EXT=\.so/' Makefile
+        sed -i.bak 's/LIBVERSION=[^ ]* /LIBVERSION= /g' Makefile
+        sed -i.bak 's/install: all install_docs install_sw/install: install_docs install_sw/g' Makefile
+    fi
+
+    make depend
+    make all
+
+    echo $ANDROID_TOOLCHAIN
+    echo $PREBUILT/bin
+
+    echo 'Xxxxxxxxxx' | sudo -kSE make install CC=$PREBUILT/bin/$HOST-gcc RANLIB=$PREBUILT/bin/$HOST-ranlib
 
     # copy the binaries
     mkdir -p $PREFIX
     cp -r $BUILD_DIR/$CPU/* $PREFIX
-
-    exit 0
-elif [ $TARGET == "arm64-v8a" ]
-then
-    . ../libopenssl_builder.sh -s `pwd` -n $NDK -o $BUILD_DIR -b 1
-
-    # copy the binaries
-    mkdir -p $PREFIX
-    cp -r $BUILD_DIR/$CPU/* $PREFIX
-
-    exit 0
-else
-    ./config shared no-ssl2 no-ssl3 no-comp no-hw no-engine --openssldir=$INSTALL_DIR --prefix=$INSTALL_DIR
-
-    # Remove the version from the soname generated by the makefile
-    echo "Modify openssl makefile to remove version from soname"
-    sed -i.bak 's/^SHLIB_EXT=\.so\..*/SHLIB_EXT=\.so/' Makefile
-    sed -i.bak 's/LIBVERSION=[^ ]* /LIBVERSION= /g' Makefile
-    sed -i.bak 's/install: all install_docs install_sw/install: install_docs install_sw/g' Makefile
-fi
-
-make depend
-make all
-
-echo $ANDROID_TOOLCHAIN
-echo $PREBUILT/bin
-
-echo 'Xxxxxxxxxx' | sudo -kSE make install CC=$PREBUILT/bin/$HOST-gcc RANLIB=$PREBUILT/bin/$HOST-ranlib
-
-# copy the binaries
-mkdir -p $PREFIX
-cp -r $BUILD_DIR/$CPU/* $PREFIX
 }
 
 if [ $TARGET == 'arm' ]; then
@@ -163,14 +191,14 @@ if [ $TARGET == 'i686' ]; then
   build_one
 fi
 
-# if [ $TARGET == 'mips' ]; then
-#   CPU=mips
-#   ARCH=mips
-#   PREFIX=`pwd`/../jni/openssl-android/mips
-#   export ANDROID_EABI=mipsel-linux-android-4.9
-#   export ANDROID_ARCH=arch-mips
-#   build_one
-# fi
+ if [ $TARGET == 'mips' ]; then
+   CPU=mips
+   ARCH=mips
+   PREFIX=`pwd`/../jni/openssl-android/mips
+   export ANDROID_EABI=mipsel-linux-android-4.9
+   export ANDROID_ARCH=arch-mips
+   build_one
+ fi
 
 if [ $TARGET == 'x86_64' ]; then
   CPU=x86_64
