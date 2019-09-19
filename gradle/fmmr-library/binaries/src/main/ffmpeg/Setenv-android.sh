@@ -225,7 +225,7 @@ fi
 #####################################################################
 
 # Most of these should be OK (MACHINE, SYSTEM, ARCH). RELEASE is ignored.
-export MACHINE=armv7
+export MACHINE=armv7l
 export RELEASE=2.6.37
 export SYSTEM=android
 export ARCH=arm

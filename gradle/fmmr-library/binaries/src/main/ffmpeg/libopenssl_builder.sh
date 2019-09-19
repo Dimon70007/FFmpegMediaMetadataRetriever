@@ -30,16 +30,6 @@ TOOLCHAIN_INSTALL_DIR=/tmp/libopenssl_builder/toolchain
 
 BUILD_INDEX=0
 
-ARCHS=(
-    x86
-    arm64-v8a
-    armeabi
-    armeabi-v7a
-     mips
-     mips64
-    x86_64
-)
-
 # In same order as ARCHS - each toolchain corresponds to an architecture
 TOOLS=(
     x86
@@ -73,15 +63,25 @@ SYSROOTS=(
     arch-x86_64
 )
 
+ARCHS=(
+    android-x86
+    arm64-v8a
+    armeabi
+    armv7-a
+    mips
+    mips64
+    x86_64
+)
+
 # In same order as ARCHS - machines for openssl
 OPENSSL_OS=(
+    android-x86
+    aarch64-linux-android
+    android
+    android-armv7
     linux-generic32
     linux-generic64
-    linux-generic32
-    linux-generic32
-     linux-generic32
-     linux-generic64
-    linux-generic64
+    x86_64-linux-android
 )
 
 check_built()
@@ -149,18 +149,17 @@ echo "========================================"
     host=${HOSTS[$BUILD_INDEX]}
     sysroot=${SYSROOTS[$BUILD_INDEX]}
 
-    install_dir=$TOOLCHAIN_INSTALL_DIR/$tool
-    mkdir -p $install_dir
+    mkdir -p $TOOLCHAIN_INSTALL_DIR
 
-    #if [ -d "$install_dir/bin" ]; then
-        #echo "Skipping creation of toolchain - exists in $install_dir"
-    #else
+    if [ -d "$TOOLCHAIN_INSTALL_DIR/bin" ]; then
+        echo "Skipping creation of toolchain - exists in $TOOLCHAIN_INSTALL_DIR"
+    else
         echo "Building toolchain"
-        $ndk_directory/build/tools/make-standalone-toolchain.sh --platform=$PLATFORM --install-dir=$install_dir --toolchain=$tool-"$TOOLCHAIN_VERSION" --abis=$arch # --force
-    #fi
+        $ndk_directory/build/tools/make-standalone-toolchain.sh --platform=$PLATFORM --install-dir=$TOOLCHAIN_INSTALL_DIR --toolchain=$tool-"$TOOLCHAIN_VERSION" --abis=$arch #--force
+    fi
 
     echo "Adding toolchain to PATH"
-    export PATH=$install_dir/bin:$PATH
+    export PATH=$TOOLCHAIN_INSTALL_DIR/bin:$PATH
 
     ############ OPENSSL ############
     echo "Clean openssl output directory"
@@ -173,7 +172,7 @@ echo "========================================"
     export ANDROID_EABI=$host-"$TOOLCHAIN_VERSION"
     export ANDROID_API=$PLATFORM
     export ANDROID_SYSROOT=$ndk_directory/platforms/$PLATFORM/$sysroot
-    export ANDROID_TOOLCHAIN=$install_dir
+    export ANDROID_TOOLCHAIN=$TOOLCHAIN_INSTALL_DIR
     export ANDROID_DEV=$ANDROID_SYSROOT/usr
 
     export SYSTEM=android

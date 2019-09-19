@@ -12,11 +12,11 @@ source $WORKING_DIR/min_support_platforms.sh
 
 # armeabi is deprecated in NDK r16. Removed in NDK r17. No hard float.
 # TARGET_ARMEABI_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/armeabi
-TARGET_ARMEABIV7A_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/armeabi-v7a
+# TARGET_ARMEABIV7A_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/armeabi-v7a
 TARGET_X86_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/x86
 # TARGET_MIPS_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/mips
-TARGET_X86_64_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/x86_64
-TARGET_ARMEABI_64_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/arm64-v8a
+# TARGET_X86_64_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/x86_64
+# TARGET_ARMEABI_64_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/arm64-v8a
 
 export ENABLE_OPENSSL=true
 
@@ -25,8 +25,8 @@ export NDK=`grep ndk.dir $PROPS | cut -d'=' -f2`
 build_target() {
     if [ "$ENABLE_OPENSSL" = true ] ; then
         echo 'Build FFmpeg with openssl support'
-        ./build_openssl.sh $1
-        ./build_ffmpeg_with_ssl.sh $1
+        $WORKING_DIR/build_openssl.sh $1 && \
+        $WORKING_DIR/build_ffmpeg_with_ssl.sh $1 || exit 1
     else
         ./build_ffmpeg.sh $1
     fi

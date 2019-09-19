@@ -21,19 +21,19 @@ if [ -z "$PLATFORM_X32" ]; then
 fi
 export TARGET=$1
 
-ARM_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-arm/
+ARM_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-arm
 ARM_PREBUILT=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64
 
-ARM64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-arm64/
+ARM64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-arm64
 ARM64_PREBUILT=$NDK/toolchains/aarch64-linux-android-4.9/prebuilt/darwin-x86_64
 
-X86_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-x86/
+X86_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-x86
 X86_PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/darwin-x86_64
 
-X86_64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-x86_64/
+X86_64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-x86_64
 X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/darwin-x86_64
 
-# MIPS_PLATFORM=$NDK/platforms/${PLATFORM_DEPRECATED}/arch-mips/
+# MIPS_PLATFORM=$NDK/platforms/${PLATFORM_DEPRECATED}/arch-mips
 # MIPS_PREBUILT=$NDK/toolchains/mipsel-linux-android-4.9/prebuilt/darwin-x86_64
 
 BUILD_DIR=`pwd`/ffmpeg-android
@@ -47,19 +47,20 @@ else
     echo "Using ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 fi
 
-tar -xf ffmpeg-${FFMPEG_VERSION}.tar.bz2  && echo "ffmpeg-${FFMPEG_VERSION}.tar.bz2 has been extracted"
+tar -xf ffmpeg-${FFMPEG_VERSION}.tar.bz2 && echo "ffmpeg-${FFMPEG_VERSION}.tar.bz2 has been extracted"
 
 for i in `find diffs -type f`; do
     (cd ffmpeg-${FFMPEG_VERSION} && patch -p1 < ../$i)
 done
 
+SSL_LD=`pwd`/openssl-android/build
+
 
 function build_one
 {
-    SSL_LD=`pwd`
-
-    SSL_EXTRA_LDFLAGS="-L$SSL_LD/openssl-android/$TARGET/lib"
-    SSL_EXTRA_CFLAGS="-I$SSL_LD/openssl-android/$TARGET/include"
+    openssl_output=$SSL_LD/${TARGET}
+    SSL_EXTRA_LDFLAGS="-L$openssl_output/lib -lssl -lcrypto"
+    SSL_EXTRA_CFLAGS="-I$openssl_output/include"
 
     echo $SSL_EXTRA_LDFLAGS
     echo $SSL_EXTRA_CFLAGS
@@ -91,7 +92,13 @@ function build_one
         PREBUILT=$X86_PREBUILT
         HOST=i686-linux-android
     fi
-
+    FF_ASM_FLAGS=
+    if [ "$ARCH" = "x86" ]; then
+        FF_ASM_FLAGS="$FF_ASM_FLAGS --disable-asm  --enable-yasm"
+    else
+        # Optimization options (experts only):
+        FF_ASM_FLAGS="$FF_ASM_FLAGS --enable-asm"
+    fi
     #    --prefix=$PREFIX \
 
     #--incdir=$BUILD_DIR/include \
@@ -101,21 +108,28 @@ function build_one
     #    --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog" \
 
     # TODO Adding aac decoder brings "libnative.so has text relocations. This is wasting memory and prevents security hardening. Please fix." message in Android.
+    # export COMMON_FF_CFG_FLAGS="$COMMON_FF_CFG_FLAGS --disable-linux-perf"
     pushd ffmpeg-$FFMPEG_VERSION
+
+# --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
     ./configure --target-os=linux \
+        --enable-pic \
         --incdir=$BUILD_DIR/$TARGET/include \
         --libdir=$BUILD_DIR/$TARGET/lib \
         --enable-cross-compile \
+        --enable-pthreads \
+        --enable-runtime-cpudetect \
         --extra-libs="-lgcc" \
         --arch=$ARCH \
-        --cc=$PREBUILT/bin/$HOST-gcc \
-        --cross-prefix=$PREBUILT/bin/$HOST- \
-        --nm=$PREBUILT/bin/$HOST-nm \
+        --cc=$PREBUILT/bin/${HOST}-gcc \
+        --cross-prefix=$PREBUILT/bin/${HOST}- \
+        --nm=$PREBUILT/bin/${HOST}-nm \
         --sysroot=$PLATFORM \
         --extra-cflags="$OPTIMIZE_CFLAGS $SSL_EXTRA_CFLAGS" \
         --enable-shared \
+        --enable-debug \
         --enable-small \
-        --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
+        --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS" \
         --disable-ffplay \
         --disable-ffmpeg \
         --disable-ffprobe \
@@ -165,15 +179,17 @@ function build_one
         --disable-devices \
         --disable-filters \
         --disable-debug \
-        --disable-asm \
         --enable-openssl \
+        --disable-linux-perf \
+        $FF_ASM_FLAGS \
         $ADDITIONAL_CONFIGURE_FLAG
     # not needed protocols disabling because of they don't increase library size
     #--disable-protocols \
     #--enable-protocol=file,http,https,mmsh,mmst,pipe,rtmp \
 
     make clean
-    make -j8 install V=1
+    make
+    make -j6 install # V=1
     $PREBUILT/bin/$HOST-ar d libavcodec/libavcodec.a inverse.o
     #$PREBUILT/bin/$HOST-ld -rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -soname libffmpeg.so -shared -nostdlib  -z,noexecstack -Bsymbolic --whole-archive --no-undefined -o $PREFIX/libffmpeg.so libavcodec/libavcodec.a libavformat/libavformat.a libavutil/libavutil.a libswscale/libswscale.a -lc -lm -lz -ldl -llog  --warn-once  --dynamic-linker=/system/bin/linker $PREBUILT/lib/gcc/$HOST/4.6/libgcc.a
     popd
@@ -182,66 +198,6 @@ function build_one
     mkdir -p $PREFIX
     cp -r $BUILD_DIR/$TARGET/* $PREFIX
 }
-
-if [ $TARGET == 'arm-v5te' ]; then
-    #arm v5te
-    CPU=armv5te
-    ARCH=arm
-    OPTIMIZE_CFLAGS="-marm -march=$CPU"
-    PREFIX=$BUILD_DIR/$CPU
-    ADDITIONAL_CONFIGURE_FLAG=
-    build_one
-fi
-
-if [ $TARGET == 'arm-v6' ]; then
-    #arm v6
-    CPU=armv6
-    ARCH=arm
-    OPTIMIZE_CFLAGS="-marm -march=$CPU"
-    PREFIX=`pwd`/ffmpeg-android/$CPU
-    ADDITIONAL_CONFIGURE_FLAG=
-    build_one
-fi
-
-if [ $TARGET == 'arm-v7vfpv3' ]; then
-    #arm v7vfpv3
-    CPU=armv7-a
-    ARCH=arm
-    OPTIMIZE_CFLAGS="-mfloat-abi=softfp -mfpu=vfpv3-d16 -marm -march=$CPU "
-    PREFIX=$BUILD_DIR/$CPU
-    ADDITIONAL_CONFIGURE_FLAG=
-    build_one
-fi
-
-if [ $TARGET == 'arm-v7vfp' ]; then
-    #arm v7vfp
-    CPU=armv7-a
-    ARCH=arm
-    OPTIMIZE_CFLAGS="-mfloat-abi=softfp -mfpu=vfp -marm -march=$CPU "
-    PREFIX=`pwd`/ffmpeg-android/$CPU-vfp
-    ADDITIONAL_CONFIGURE_FLAG=
-    build_one
-fi
-
-if [ $TARGET == 'arm-v7n' ]; then
-    #arm v7n
-    CPU=armv7-a
-    ARCH=arm
-    OPTIMIZE_CFLAGS="-mfloat-abi=softfp -mfpu=neon -marm -march=$CPU -mtune=cortex-a8"
-    PREFIX=`pwd`/ffmpeg-android/$CPU
-    ADDITIONAL_CONFIGURE_FLAG=--enable-neon
-    build_one
-fi
-
-if [ $TARGET == 'arm-v6+vfp' ]; then
-    #arm v6+vfp
-    CPU=armv6
-    ARCH=arm
-    OPTIMIZE_CFLAGS="-DCMP_HAVE_VFP -mfloat-abi=softfp -mfpu=vfp -marm -march=$CPU"
-    PREFIX=`pwd`/ffmpeg-android/${CPU}_vfp
-    ADDITIONAL_CONFIGURE_FLAG=
-    build_one
-fi
 
 if [ $TARGET == 'arm64-v8a' ]; then
     #arm64-v8a
@@ -268,7 +224,7 @@ fi
 if [ $TARGET == 'i686' ]; then
     #x86
     CPU=i686
-    ARCH=i686
+    ARCH=x86
     OPTIMIZE_CFLAGS="-fomit-frame-pointer"
     #PREFIX=$BUILD_DIR/$CPU
     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/x86
