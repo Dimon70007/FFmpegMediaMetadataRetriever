@@ -121,6 +121,7 @@ public class FFmpegMediaMetadataRetriever
     }*/
 	
 	private static final String [] JNI_LIBRARIES = {
+        "ssl",
 		"avutil",
 		"swscale",
 		"avcodec",
@@ -279,7 +280,7 @@ public class FFmpegMediaMetadataRetriever
      * @return The meta data value associate with the given keyCode on success; 
      * null on failure.
      */
-    public native String extractMetadata(String key);
+    public native String extractMetadata(String keyCode);
 
     /**
      * Call this method after setDataSource(). This method retrieves the 
@@ -294,7 +295,7 @@ public class FFmpegMediaMetadataRetriever
      * @return The meta data value associate with the given keyCode on success; 
      * null on failure.
      */
-    public native String extractMetadataFromChapter(String key, int chapter);
+    public native String extractMetadataFromChapter(String keyCode, int chapter);
     
     /**
      * Gets the media metadata.
@@ -386,27 +387,20 @@ public class FFmpegMediaMetadataRetriever
         BitmapFactory.Options bitmapOptionsCache = new BitmapFactory.Options();
         //bitmapOptionsCache.inPreferredConfig = getInPreferredConfig();
         bitmapOptionsCache.inDither = false;
-        BufferedInputStream inputStream = null;
         try{
-            bitmapOptionsCache.inJustDecodeBounds = true;
-            inputStream = new BufferedInputStream(new ByteArrayInputStream(_getFrameAtTime(timeUs, option)));
-            b = BitmapFactory.decodeStream(inputStream, null, bitmapOptionsCache);
-
-            int height = bitmapOptionsCache.outHeight;
-            int width = bitmapOptionsCache.outWidth;
-
-            bitmapOptionsCache.inSampleSize = calculateInSampleSize(bitmapOptionsCache,500,500);
-            bitmapOptionsCache.inJustDecodeBounds = false;
-
-            b = BitmapFactory.decodeStream(inputStream, null, bitmapOptionsCache);
-
+            byte [] frame = _getFrameAtTime(timeUs, option);
+            if (frame != null) {
+                bitmapOptionsCache.inJustDecodeBounds = true;
+                b = BitmapFactory.decodeByteArray(frame, 0, frame.length,bitmapOptionsCache);
+                bitmapOptionsCache.inSampleSize = calculateInSampleSize(bitmapOptionsCache,1280,720);
+                bitmapOptionsCache.inJustDecodeBounds = false;
+                b = BitmapFactory.decodeByteArray(frame, 0, frame.length,bitmapOptionsCache);
+            }
         }catch(Exception e) {
-            Log.e(this.getClass().getName(), "Error till decoding bitmap",e);
-        }
-        try{
-            inputStream.close();
-        }catch (Exception e) {
-            Log.e(this.getClass().getName(), "Error in inputStream",e);
+            Log.e(this.getClass().getName(),
+                    String.format("Error till decoding bitmap with time: %d, options: %d",
+                            timeUs,
+                            option),e);
         }
 //        if (byteArrayInputStream.available() != null) {
 //            Log.d(this.getClass().getName(), String.format("picture size is %d", picture.length);
@@ -554,7 +548,9 @@ public class FFmpegMediaMetadataRetriever
         final int height = options.outHeight;
         final int width = options.outWidth;
         int inSampleSize = 1;
-        Log.d(FFmpegMediaMetadataRetriever.class.getName(), String.format("options: width: %d, height: %d", width, height));
+        Log.d(FFmpegMediaMetadataRetriever.class.getName(),
+                String.format("options: width: %d, height: %d, reqWidth: %d, reqHeight: %d",
+                        width, height, reqWidth, reqHeight));
 
         if (height > reqHeight || width > reqWidth) {
 

@@ -64,6 +64,9 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
     	try {
             if (FMMRFragment.mFinalSurface != null) {
                 fmmr.setSurface(FMMRFragment.mFinalSurface);
+            } else {
+                Log.d(MetadataLoader.class.getName(), ">>> FMMRFragment.mFinalSurface is null <<<");
+
             }
 
             fmmr.setDataSource(mUri);
@@ -98,7 +101,7 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
             }
     		Bitmap b = fmmr.getFrameAtTime();
 
-    		if (b != null) {
+    		if (b == null) {
                 Log.d(MetadataLoader.class.getName(), "any bitmap frame exists");
                 Bitmap b2 = fmmr.getFrameAtTime(2*1000*1000, FFmpegMediaMetadataRetriever.OPTION_CLOSEST_SYNC);
     			if (b2 != null) {

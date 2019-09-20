@@ -83,9 +83,9 @@ public class FMMRFragment extends ListFragment
     	final EditText uriText = (EditText) v.findViewById(R.id.uri);
     	// Uncomment for debugging
 		//uriText.setText("http://...");
-//    	uriText.setText("http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_60fps_stereo_abl.mp4");
-//		uriText.setText("https://ia700401.us.archive.org/19/items/ksnn_compilation_master_the_internet/ksnn_compilation_master_the_internet_512kb.mp4");
-		uriText.setText("http://bc71.s.erlyvideo.ru:80/nc33wp.nc33wp-261e11fc27/preview.mp4?token=2.fm0VcNrxAB0ABZKWqTJ-zZ3ktOsW6EHtbrYSAUzIbcYTAnwe");
+    	// uriText.setText("http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_60fps_stereo_abl.mp4");
+		uriText.setText("https://www.sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4");
+//		uriText.setText("http://downloads.4ksamples.com/videos/SES.Astra.UHD.Test.1.2160p.UHDTV.AAC.HEVC.x265-LiebeIst.mkv");
 
     	Intent intent = getActivity().getIntent();
     	
@@ -267,8 +267,10 @@ public class FMMRFragment extends ListFragment
 				if (b != null) {
 					float density = getResources().getDisplayMetrics().density;
 					int scale = (int) (200 * density);
-					Bitmap bm = Bitmap.createScaledBitmap(b, scale, scale, true);
-					mImage.setImageBitmap(bm);
+//					Bitmap bm = Bitmap.createScaledBitmap(b, scale, scale, true);
+					mImage.setAdjustViewBounds(true);
+					mImage.setMaxWidth(this.mmSurfaceView.getWidth());
+					mImage.setImageBitmap(b);
 				}
 			}
 		}
