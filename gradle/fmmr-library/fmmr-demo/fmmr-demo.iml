@@ -117,9 +117,5 @@
     <orderEntry type="library" name="Gradle: androidx.arch.core:core-runtime:2.0.0@aar" level="project" />
     <orderEntry type="module" module-name="binaries" />
     <orderEntry type="module" module-name="core" />
-    <orderEntry type="module" module-name="binaries" />
-    <orderEntry type="module" module-name="core" />
-    <orderEntry type="module" module-name="binaries" />
-    <orderEntry type="module" module-name="core" />
   </component>
 </module>

@@ -47,20 +47,33 @@ else
     echo "Using ffmpeg-${FFMPEG_VERSION}.tar.bz2"
 fi
 
+COMMON_FF_CFG_FLAGS=
+SSL_EXTRA_CFLAGS=
+SSL_EXTRA_LDFLAGS=
+SSL_LD=
+source ./FFMPEG_CONFIG_PARAMS.sh
+
 tar -xf ffmpeg-${FFMPEG_VERSION}.tar.bz2 && echo "ffmpeg-${FFMPEG_VERSION}.tar.bz2 has been extracted"
 
 for i in `find diffs -type f`; do
     (cd ffmpeg-${FFMPEG_VERSION} && patch -p1 < ../$i)
 done
 
-SSL_LD=`pwd`/openssl-android/build
-
 
 function build_one
 {
-    openssl_output=$SSL_LD/${TARGET}
-    SSL_EXTRA_LDFLAGS="-L$openssl_output/lib -lssl -lcrypto"
-    SSL_EXTRA_CFLAGS="-I$openssl_output/include"
+    # with openssl
+    if [ -f "${SSL_LD}/lib/libssl.a" ]; then
+        echo "OpenSSL detected"
+        COMMON_FF_CFG_FLAGS="$COMMON_FF_CFG_FLAGS --enable-openssl"
+        SSL_EXTRA_CFLAGS="-I$SSL_LD/include"
+        SSL_EXTRA_LDFLAGS="-L$SSL_LD/lib" # -lssl -lcrypto"
+    else
+      echo "OpenSSL lib not found in path: "
+      echo "$SSL_LD/lib"
+      echo "For building without openssl please call build_ffmpeg.sh script"
+      exit 1
+    fi
 
     echo $SSL_EXTRA_LDFLAGS
     echo $SSL_EXTRA_CFLAGS
@@ -92,9 +105,11 @@ function build_one
         PREBUILT=$X86_PREBUILT
         HOST=i686-linux-android
     fi
+    # fix x86 build with yasm
     FF_ASM_FLAGS=
     if [ "$ARCH" = "x86" ]; then
-        FF_ASM_FLAGS="$FF_ASM_FLAGS --disable-asm  --enable-yasm"
+      FF_ASM_FLAGS="$FF_ASM_FLAGS --disable-asm"
+      # FF_ASM_FLAGS="$FF_ASM_FLAGS --enable-yasm"
     else
         # Optimization options (experts only):
         FF_ASM_FLAGS="$FF_ASM_FLAGS --enable-asm"
@@ -114,11 +129,9 @@ function build_one
 # --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
     ./configure --target-os=linux \
         --enable-pic \
-        --incdir=$BUILD_DIR/$TARGET/include \
-        --libdir=$BUILD_DIR/$TARGET/lib \
+        --incdir=$BUILD_DIR/${TARGET}/include \
+        --libdir=$BUILD_DIR/${TARGET}/lib \
         --enable-cross-compile \
-        --enable-pthreads \
-        --enable-runtime-cpudetect \
         --extra-libs="-lgcc" \
         --arch=$ARCH \
         --cc=$PREBUILT/bin/${HOST}-gcc \
@@ -128,59 +141,8 @@ function build_one
         --extra-cflags="$OPTIMIZE_CFLAGS $SSL_EXTRA_CFLAGS" \
         --enable-shared \
         --enable-debug \
-        --enable-small \
-        --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS" \
-        --disable-ffplay \
-        --disable-ffmpeg \
-        --disable-ffprobe \
-        --disable-avfilter \
-        --disable-avdevice \
-        --disable-ffserver \
-        --disable-doc \
-        --disable-htmlpages \
-        --disable-manpages \
-        --disable-podpages \
-        --disable-txtpages \
-        --disable-swresample \
-        --disable-postproc \
-        --disable-gpl \
-        --disable-hwaccels \
-        --disable-encoders \
-        --enable-encoder=png \
-        --disable-decoders \
-        --enable-decoder=ac3 \
-        --enable-decoder=aac \
-        --enable-decoder=mp3 \
-        --enable-decoder=h264 \
-        --enable-decoder=hevc \
-        --enable-decoder=vp8 \
-        --enable-decoder=vp9 \
-        --disable-muxers \
-        --disable-demuxers \
-        --enable-demuxer=aac \
-        --enable-demuxer=concat \
-        --enable-demuxer=data \
-        --enable-demuxer=mp3 \
-        --enable-demuxer=mpegps \
-        --enable-demuxer=mpegts \
-        --enable-demuxer=mpegtsraw \
-        --enable-demuxer=mpegvideo \
-        --enable-demuxer=hevc \
-        --enable-demuxer=dash \
-        --enable-demuxer=mov \
-        --enable-demuxer=webm_dash_manifest \
-        --disable-parsers \
-        --enable-parser=aac \
-        --enable-parser=h264 \
-        --enable-parser=hevc \
-        --disable-bsfs \
-        --disable-indevs \
-        --disable-outdevs \
-        --disable-devices \
-        --disable-filters \
-        --disable-debug \
-        --enable-openssl \
-        --disable-linux-perf \
+        --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -nostdlib -L$PLATFORM/usr/lib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
+        $COMMON_FF_CFG_FLAGS \
         $FF_ASM_FLAGS \
         $ADDITIONAL_CONFIGURE_FLAG
     # not needed protocols disabling because of they don't increase library size
@@ -189,7 +151,7 @@ function build_one
 
     make clean
     make
-    make -j6 install # V=1
+    make $FF_MAKE_FLAGS install V=1
     $PREBUILT/bin/$HOST-ar d libavcodec/libavcodec.a inverse.o
     #$PREBUILT/bin/$HOST-ld -rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib  -soname libffmpeg.so -shared -nostdlib  -z,noexecstack -Bsymbolic --whole-archive --no-undefined -o $PREFIX/libffmpeg.so libavcodec/libavcodec.a libavformat/libavformat.a libavutil/libavutil.a libswscale/libswscale.a -lc -lm -lz -ldl -llog  --warn-once  --dynamic-linker=/system/bin/linker $PREBUILT/lib/gcc/$HOST/4.6/libgcc.a
     popd
@@ -204,8 +166,8 @@ if [ $TARGET == 'arm64-v8a' ]; then
     CPU=arm64-v8a
     ARCH=arm64
     OPTIMIZE_CFLAGS=
-    PREFIX=$BUILD_DIR/$CPU
     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/arm64-v8a
+    SSL_LD=`pwd`/../jni/openssl-android/arm64-v8a
     ADDITIONAL_CONFIGURE_FLAG=
     build_one
 fi
@@ -215,8 +177,8 @@ if [ $TARGET == 'x86_64' ]; then
     CPU=x86_64
     ARCH=x86_64
     OPTIMIZE_CFLAGS="-fomit-frame-pointer"
-    #PREFIX=$BUILD_DIR/$CPU
     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/x86_64
+    SSL_LD=`pwd`/../jni/openssl-android/x86_64
     ADDITIONAL_CONFIGURE_FLAG=
     build_one
 fi
@@ -226,8 +188,8 @@ if [ $TARGET == 'i686' ]; then
     CPU=i686
     ARCH=x86
     OPTIMIZE_CFLAGS="-fomit-frame-pointer"
-    #PREFIX=$BUILD_DIR/$CPU
     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/x86
+    SSL_LD=`pwd`/../jni/openssl-android/x86
     ADDITIONAL_CONFIGURE_FLAG=
     build_one
 fi
@@ -240,8 +202,8 @@ fi
 # -ftree-vectorize -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops \
 # -finline-limit=300 -finline-functions -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone \
 # -Wno-psabi -Wa,--noexecstack"
-#     #PREFIX=$BUILD_DIR/$CPU
-#     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
+# #     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
+     # SSL_LD=`pwd`/../jni/openssl-android/mips
 #     ADDITIONAL_CONFIGURE_FLAG=
 #     build_one
 # fi
@@ -251,8 +213,8 @@ if [ $TARGET == 'armv7-a' ]; then
     CPU=armv7-a
     ARCH=arm
     OPTIMIZE_CFLAGS="-mfloat-abi=softfp -marm -march=$CPU "
-    #PREFIX=`pwd`/ffmpeg-android/$CPU
     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/armeabi-v7a
+    SSL_LD=`pwd`/../jni/openssl-android/armeabi-v7a
     ADDITIONAL_CONFIGURE_FLAG=
     build_one
 fi
@@ -262,8 +224,8 @@ if [ $TARGET == 'arm' ]; then
     CPU=arm
     ARCH=arm
     OPTIMIZE_CFLAGS=""
-    #PREFIX=`pwd`/ffmpeg-android/$CPU
     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/armeabi
+    SSL_LD=`pwd`/../jni/openssl-android/armeabi
     ADDITIONAL_CONFIGURE_FLAG=
     build_one
 fi

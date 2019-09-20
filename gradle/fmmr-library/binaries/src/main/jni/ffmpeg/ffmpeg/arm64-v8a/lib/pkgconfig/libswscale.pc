@@ -1,0 +1,14 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=/Users/otvazhniy/github/ffmpeg-glide-video-decoder/FFmpegMediaMetadataRetriever/gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg-android/armv7-a/lib
+includedir=/Users/otvazhniy/github/ffmpeg-glide-video-decoder/FFmpegMediaMetadataRetriever/gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg-android/armv7-a/include
+
+Name: libswscale
+Description: FFmpeg image rescaling library
+Version: 4.8.100
+Requires: 
+Requires.private: libavutil >= 55.78.100
+Conflicts:
+Libs: -L${libdir}  -lswscale 
+Libs.private: -lm
+Cflags: -I${includedir}

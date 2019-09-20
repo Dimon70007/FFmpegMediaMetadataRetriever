@@ -10,13 +10,26 @@ export PLATFORM_X32=
 export PLATFORM_X64=
 source $WORKING_DIR/min_support_platforms.sh
 
+UNAME_S=$(uname -s)
+case "$UNAME_S" in
+    Darwin)
+        export FF_MAKE_FLAGS=-j`sysctl -n machdep.cpu.core_count`
+    ;;
+    CYGWIN_NT-*)
+        FF_WIN_TEMP="$(cygpath -am /tmp)"
+        export TEMPDIR=$FF_WIN_TEMP/
+
+        echo "Cygwin temp prefix=$FF_WIN_TEMP/"
+    ;;
+esac
+
 # armeabi is deprecated in NDK r16. Removed in NDK r17. No hard float.
 # TARGET_ARMEABI_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/armeabi
-# TARGET_ARMEABIV7A_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/armeabi-v7a
+TARGET_ARMEABIV7A_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/armeabi-v7a
 TARGET_X86_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/x86
 # TARGET_MIPS_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/mips
-# TARGET_X86_64_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/x86_64
-# TARGET_ARMEABI_64_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/arm64-v8a
+TARGET_X86_64_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/x86_64
+TARGET_ARMEABI_64_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/arm64-v8a
 
 export ENABLE_OPENSSL=true
 
@@ -39,7 +52,7 @@ fi
 
 if [ "$#" -eq 1 ] && [ "$1" = "--with-openssl" ]; then
     ENABLE_OPENSSL=true
-    rm -rf $WORKING_DIR/../jni/ffmpeg/ffmpeg/*
+   # rm -rf $WORKING_DIR/../jni/ffmpeg/ffmpeg/*
 fi
 
 # Make the target JNI folder if it doesn't exist

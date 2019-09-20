@@ -1,0 +1,14 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=/Users/otvazhniy/github/ffmpeg-glide-video-decoder/FFmpegMediaMetadataRetriever/gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg-android/armv7-a/lib
+includedir=/Users/otvazhniy/github/ffmpeg-glide-video-decoder/FFmpegMediaMetadataRetriever/gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg-android/armv7-a/include
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 57.107.100
+Requires: 
+Requires.private: libavutil >= 55.78.100
+Conflicts:
+Libs: -L${libdir}  -lavcodec 
+Libs.private: -lssl -lcrypto -lm -lz -pthread -pthread -lgcc
+Cflags: -I${includedir}
