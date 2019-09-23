@@ -1,27 +1,60 @@
 #!/bin/sh
 
-cd src/main/ffmpeg
+CURRENT=`pwd`
+BASENAME=`basename "$CURRENT"`
+if [ $BASENAME != "ffmpeg" ]; then
+  cd src/main/ffmpeg
+fi
 
 export WORKING_DIR=`pwd`
 export PROPS=$WORKING_DIR/../../../../local.properties
+
+export NDK=`grep ndk.dir $PROPS | cut -d'=' -f2`
 
 export PLATFORM_DEPRECATED=
 export PLATFORM_X32=
 export PLATFORM_X64=
 source $WORKING_DIR/min_support_platforms.sh
 
-UNAME_S=$(uname -s)
-case "$UNAME_S" in
-    Darwin)
-        export FF_MAKE_FLAGS=-j`sysctl -n machdep.cpu.core_count`
-    ;;
-    CYGWIN_NT-*)
-        FF_WIN_TEMP="$(cygpath -am /tmp)"
-        export TEMPDIR=$FF_WIN_TEMP/
+function setCurrentPlatform {
+  UNAME_S=$(uname -s)
+  case "$UNAME_S" in
+      Darwin)
+          # export FF_MAKE_FLAGS="-j`sysctl -n machdep.cpu.thread_count`"
+          export FF_MAKE_FLAGS="-j`sysctl -n machdep.cpu.core_count`"
+          export BUILD_PLATFORM=darwin-x86_64
+          echo "FF_MAKE_FLAGS: ${FF_MAKE_FLAGS}"
+      ;;
+      Linux*)
+          export FF_MAKE_FLAGS="-j$(nproc)"
+          export BUILD_PLATFORM=linux-x86_64
+          ;;
+      CYGWIN_NT-*)
+          export BUILD_PLATFORM=linux-x86_64
+          FF_WIN_TEMP="$(cygpath -am /tmp)"
+          export FF_MAKE_FLAGS="-j2"
+          export TEMPDIR=$FF_WIN_TEMP/
+          echo "Cygwin temp prefix=$FF_WIN_TEMP/"
+      ;;
+      *)
+          export BUILD_PLATFORM=linux-x86_64
+          export FF_MAKE_FLAGS="-j1"
+          echo -e "\033[33mWarning! Unknown platform ${UNAME_S}! falling back compile linux-x86_64\033[0m"
+          ;;
+  esac
+    echo "build platform: ${BUILD_PLATFORM}"
+    echo "FF_MAKE_FLAGS: ${FF_MAKE_FLAGS}"
+}
 
-        echo "Cygwin temp prefix=$FF_WIN_TEMP/"
-    ;;
-esac
+function checkPreRequisites {
+    if [ -z "$NDK" -a "$NDK" == "" ]; then
+        echo -e "\033[31mFailed! NDK is empty. Run 'export NDK=[PATH_TO_NDK]'\033[0m"
+        exit
+    fi
+}
+
+setCurrentPlatform
+checkPreRequisites
 
 # armeabi is deprecated in NDK r16. Removed in NDK r17. No hard float.
 # TARGET_ARMEABI_DIR=$WORKING_DIR/../jni/ffmpeg/ffmpeg/armeabi

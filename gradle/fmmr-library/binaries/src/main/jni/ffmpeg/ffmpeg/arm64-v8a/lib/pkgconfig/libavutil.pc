@@ -1,7 +1,7 @@
 prefix=/usr/local
 exec_prefix=${prefix}
-libdir=/Users/otvazhniy/github/ffmpeg-glide-video-decoder/FFmpegMediaMetadataRetriever/gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg-android/armv7-a/lib
-includedir=/Users/otvazhniy/github/ffmpeg-glide-video-decoder/FFmpegMediaMetadataRetriever/gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg-android/armv7-a/include
+libdir=/Users/otvazhniy/github/ffmpeg-glide-video-decoder/FFmpegMediaMetadataRetriever/gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg-android/x86_64/lib
+includedir=/Users/otvazhniy/github/ffmpeg-glide-video-decoder/FFmpegMediaMetadataRetriever/gradle/fmmr-library/binaries/src/main/ffmpeg/ffmpeg-android/x86_64/include
 
 Name: libavutil
 Description: FFmpeg utility library

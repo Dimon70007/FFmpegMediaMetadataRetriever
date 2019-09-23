@@ -22,23 +22,25 @@ fi
 export TARGET=$1
 
 ARM_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-arm
-ARM_PREBUILT=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64
+ARM_PREBUILT=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/$BUILD_PLATFORM
 
 ARM64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-arm64
-ARM64_PREBUILT=$NDK/toolchains/aarch64-linux-android-4.9/prebuilt/darwin-x86_64
+ARM64_PREBUILT=$NDK/toolchains/aarch64-linux-android-4.9/prebuilt/$BUILD_PLATFORM
 
 X86_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-x86
-X86_PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/darwin-x86_64
+X86_PREBUILT=$NDK/toolchains/x86-4.9/prebuilt/$BUILD_PLATFORM
 
 X86_64_PLATFORM=$NDK/platforms/${PLATFORM_X64}/arch-x86_64
-X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/darwin-x86_64
+X86_64_PREBUILT=$NDK/toolchains/x86_64-4.9/prebuilt/$BUILD_PLATFORM
 
 # MIPS_PLATFORM=$NDK/platforms/${PLATFORM_DEPRECATED}/arch-mips
 # MIPS_PREBUILT=$NDK/toolchains/mipsel-linux-android-4.9/prebuilt/darwin-x86_64
-
-BUILD_DIR=`pwd`/ffmpeg-android
+main_dir=`pwd`
+BUILD_DIR=${main_dir}/ffmpeg-android
 
 FFMPEG_VERSION="3.4.6"
+# FFMPEG_VERSION="4.2.1"
+FF_SOURCE_DIR=$main_dir/ffmpeg-${FFMPEG_VERSION}
 
 if [ ! -e "ffmpeg-${FFMPEG_VERSION}.tar.bz2" ]; then
     echo "Downloading ffmpeg-${FFMPEG_VERSION}.tar.bz2"
@@ -56,12 +58,51 @@ source ./FFMPEG_CONFIG_PARAMS.sh
 tar -xf ffmpeg-${FFMPEG_VERSION}.tar.bz2 && echo "ffmpeg-${FFMPEG_VERSION}.tar.bz2 has been extracted"
 
 for i in `find diffs -type f`; do
-    (cd ffmpeg-${FFMPEG_VERSION} && patch -p1 < ../$i)
+    (cd $FF_SOURCE_DIR && patch -p1 < ../$i)
 done
 
 
+params_help_file=$main_dir/ffmpeg${FFMPEG_VERSION}_options_help.md
+echo "generating ffmpeg options file: $params_help_file"
+rm -f $params_help_file
+touch $params_help_file
+
+pushd $FF_SOURCE_DIR
+echo -e "\n \n### List of available decoders " >>  $params_help_file
+./configure --list-decoders  >>  $params_help_file
+echo -e "\n \n### List of available encoders " >>  $params_help_file
+./configure --list-encoders  >> $params_help_file
+echo -e "\n \n### List of available hwaccels " >>  $params_help_file
+./configure --list-hwaccels  >> $params_help_file
+echo -e "\n \n### List of available demuxers " >>  $params_help_file
+./configure --list-demuxers  >> $params_help_file
+echo -e "\n \n### List of available muxers   " >>  $params_help_file
+./configure --list-muxers    >> $params_help_file
+echo -e "\n \n### List of available parsers  " >>  $params_help_file
+./configure --list-parsers   >> $params_help_file
+echo -e "\n \n### List of available protocols" >>  $params_help_file
+./configure --list-protocols >> $params_help_file
+echo -e "\n \n### List of available bsfs     " >>  $params_help_file
+./configure --list-bsfs      >> $params_help_file
+echo -e "\n \n### List of available indevs   " >>  $params_help_file
+./configure --list-indevs    >> $params_help_file
+echo -e "\n \n### List of available outdevs  " >>  $params_help_file
+./configure --list-outdevs   >> $params_help_file
+echo -e "\n \n### List of available filters  " >>  $params_help_file
+./configure --list-filters   >> $params_help_file
+popd
+
 function build_one
 {
+    CROSS_PREFIX=${PREBUILT}/bin/${HOST}-
+    CC="${CROSS_PREFIX}gcc"
+    CXX="${CROSS_PREFIX}c++"
+    AR="${CROSS_PREFIX}ar"
+    LD="${CROSS_PREFIX}ld"
+    NM="${CROSS_PREFIX}nm"
+    STRIP="${CROSS_PREFIX}strip"
+    ANDROID_API=`echo $PLATFORM_API | cut -d'-' -f 2`
+
     # with openssl
     if [ -f "${SSL_LD}/lib/libssl.a" ]; then
         echo "OpenSSL detected"
@@ -78,42 +119,13 @@ function build_one
     echo $SSL_EXTRA_LDFLAGS
     echo $SSL_EXTRA_CFLAGS
 
-    if [ $ARCH == "arm" ]
-    then
-        PLATFORM=$ARM_PLATFORM
-        PREBUILT=$ARM_PREBUILT
-        HOST=arm-linux-androideabi
-    #added by alexvas
-    elif [ $ARCH == "arm64" ]
-    then
-        PLATFORM=$ARM64_PLATFORM
-        PREBUILT=$ARM64_PREBUILT
-        HOST=aarch64-linux-android
-    # elif [ $ARCH == "mips" ]
-    # then
-    #     PLATFORM=$MIPS_PLATFORM
-    #     PREBUILT=$MIPS_PREBUILT
-    #     HOST=mipsel-linux-android
-    #alexvas
-    elif [ $ARCH == "x86_64" ]
-    then
-        PLATFORM=$X86_64_PLATFORM
-        PREBUILT=$X86_64_PREBUILT
-        HOST=x86_64-linux-android
-    else
-        PLATFORM=$X86_PLATFORM
-        PREBUILT=$X86_PREBUILT
-        HOST=i686-linux-android
-    fi
-    # fix x86 build with yasm
-    FF_ASM_FLAGS=
-    if [ "$ARCH" = "x86" ]; then
-      FF_ASM_FLAGS="$FF_ASM_FLAGS --disable-asm"
-      # FF_ASM_FLAGS="$FF_ASM_FLAGS --enable-yasm"
-    else
-        # Optimization options (experts only):
-        FF_ASM_FLAGS="$FF_ASM_FLAGS --enable-asm"
-    fi
+    pushd $FF_SOURCE_DIR
+
+    echo "Cleaning..."
+  	rm -f config.h
+  	make clean || true
+  	rm -rf ${TOOLCHAIN_PREFIX}
+
     #    --prefix=$PREFIX \
 
     #--incdir=$BUILD_DIR/include \
@@ -124,30 +136,33 @@ function build_one
 
     # TODO Adding aac decoder brings "libnative.so has text relocations. This is wasting memory and prevents security hardening. Please fix." message in Android.
     # export COMMON_FF_CFG_FLAGS="$COMMON_FF_CFG_FLAGS --disable-linux-perf"
-    pushd ffmpeg-$FFMPEG_VERSION
 
 # --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
-    ./configure --target-os=linux \
+    echo "configuring ..."
+    ./configure \
+        --nm=${NM} \
+      	--ar=${AR} \
+      	--as=${CROSS_PREFIX}gcc \
+      	--strip=${STRIP} \
+      	--cc=${CC} \
+      	--cxx=${CXX} \
+      	--enable-stripping \
+        --target-os=linux \
+        --x86asmexe=$NDK/prebuilt/${BUILD_PLATFORM}/bin/yasm \
         --enable-pic \
+        --cross-prefix=$CROSS_PREFIX \
+        --sysroot=$PLATFORM \
         --incdir=$BUILD_DIR/${TARGET}/include \
         --libdir=$BUILD_DIR/${TARGET}/lib \
         --enable-cross-compile \
         --extra-libs="-lgcc" \
         --arch=$ARCH \
-        --cc=$PREBUILT/bin/${HOST}-gcc \
-        --cross-prefix=$PREBUILT/bin/${HOST}- \
-        --nm=$PREBUILT/bin/${HOST}-nm \
-        --sysroot=$PLATFORM \
-        --extra-cflags="$OPTIMIZE_CFLAGS $SSL_EXTRA_CFLAGS" \
+        --extra-cflags="-Wl,-Bsymbolic -Os -DCONFIG_LINUX_PERF=0 -DANDROID $OPTIMIZE_CFLAGS $SSL_EXTRA_CFLAGS -fPIE -pie -fPIC" \
         --enable-shared \
         --enable-debug \
-        --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -nostdlib -L$PLATFORM/usr/lib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
+        --extra-ldflags="-Wl,-Bsymbolic -Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -fPIC -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
         $COMMON_FF_CFG_FLAGS \
-        $FF_ASM_FLAGS \
         $ADDITIONAL_CONFIGURE_FLAG
-    # not needed protocols disabling because of they don't increase library size
-    #--disable-protocols \
-    #--enable-protocol=file,http,https,mmsh,mmst,pipe,rtmp \
 
     make clean
     make
@@ -161,14 +176,22 @@ function build_one
     cp -r $BUILD_DIR/$TARGET/* $PREFIX
 }
 
+TOOLCHAIN_PREFIX=${FF_SOURCE_DIR}/toolchain-android
+
 if [ $TARGET == 'arm64-v8a' ]; then
     #arm64-v8a
     CPU=arm64-v8a
     ARCH=arm64
+    PLATFORM_API=$PLATFORM_X64
     OPTIMIZE_CFLAGS=
-    PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/arm64-v8a
-    SSL_LD=`pwd`/../jni/openssl-android/arm64-v8a
-    ADDITIONAL_CONFIGURE_FLAG=
+    PREFIX=${main_dir}/../jni/ffmpeg/ffmpeg/arm64-v8a
+    SSL_LD=${main_dir}/../jni/openssl-android/arm64-v8a
+    PLATFORM=$ARM64_PLATFORM
+    PREBUILT=$ARM64_PREBUILT
+    HOST=aarch64-linux-android
+
+    OPTIMIZE_CFLAGS=
+    ADDITIONAL_CONFIGURE_FLAG="--enable-neon --enable-optimizations"
     build_one
 fi
 
@@ -176,10 +199,16 @@ if [ $TARGET == 'x86_64' ]; then
     #x86_64
     CPU=x86_64
     ARCH=x86_64
+    PLATFORM_API=$PLATFORM_X64
+    PREFIX=${main_dir}/../jni/ffmpeg/ffmpeg/x86_64
+    SSL_LD=${main_dir}/../jni/openssl-android/x86_64
+    PLATFORM=$X86_64_PLATFORM
+    PREBUILT=$X86_64_PREBUILT
+
+    HOST=x86_64-linux-android
     OPTIMIZE_CFLAGS="-fomit-frame-pointer"
-    PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/x86_64
-    SSL_LD=`pwd`/../jni/openssl-android/x86_64
-    ADDITIONAL_CONFIGURE_FLAG=
+
+    ADDITIONAL_CONFIGURE_FLAG="--disable-asm"
     build_one
 fi
 
@@ -187,35 +216,32 @@ if [ $TARGET == 'i686' ]; then
     #x86
     CPU=i686
     ARCH=x86
+    PLATFORM_API=$PLATFORM_X32
+    PLATFORM=$X86_PLATFORM
+    PREBUILT=$X86_PREBUILT
+    HOST=i686-linux-android
     OPTIMIZE_CFLAGS="-fomit-frame-pointer"
-    PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/x86
-    SSL_LD=`pwd`/../jni/openssl-android/x86
-    ADDITIONAL_CONFIGURE_FLAG=
+    PREFIX=${main_dir}/../jni/ffmpeg/ffmpeg/x86
+    SSL_LD=${main_dir}/../jni/openssl-android/x86
+
+    OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -march=$CPU"
+    ADDITIONAL_CONFIGURE_FLAG="--disable-x86asm --disable-inline-asm --disable-asm -enable-yasm"
     build_one
 fi
-
-# if [ $TARGET == 'mips' ]; then
-#     #mips
-#     CPU=mips
-#     ARCH=mips
-#     OPTIMIZE_CFLAGS="-std=c99 -O3 -Wall -pipe -fpic -fasm \
-# -ftree-vectorize -ffunction-sections -funwind-tables -fomit-frame-pointer -funswitch-loops \
-# -finline-limit=300 -finline-functions -fpredictive-commoning -fgcse-after-reload -fipa-cp-clone \
-# -Wno-psabi -Wa,--noexecstack"
-# #     PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/mips
-     # SSL_LD=`pwd`/../jni/openssl-android/mips
-#     ADDITIONAL_CONFIGURE_FLAG=
-#     build_one
-# fi
 
 if [ $TARGET == 'armv7-a' ]; then
     #arm armv7-a
     CPU=armv7-a
     ARCH=arm
+    PLATFORM_API=$PLATFORM_X32
+    PLATFORM=$ARM_PLATFORM
+    PREBUILT=$ARM_PREBUILT
+    HOST=arm-linux-androideabi
     OPTIMIZE_CFLAGS="-mfloat-abi=softfp -marm -march=$CPU "
-    PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/armeabi-v7a
-    SSL_LD=`pwd`/../jni/openssl-android/armeabi-v7a
-    ADDITIONAL_CONFIGURE_FLAG=
+    PREFIX=${main_dir}/../jni/ffmpeg/ffmpeg/armeabi-v7a
+    SSL_LD=${main_dir}/../jni/openssl-android/armeabi-v7a
+
+    ADDITIONAL_CONFIGURE_FLAG="--enable-neon"
     build_one
 fi
 
@@ -223,9 +249,14 @@ if [ $TARGET == 'arm' ]; then
     #arm arm
     CPU=arm
     ARCH=arm
+    PLATFORM_API=$PLATFORM_X32
+    PLATFORM=$ARM_PLATFORM
+    PREBUILT=$ARM_PREBUILT
+    HOST=arm-linux-androideabi
     OPTIMIZE_CFLAGS=""
-    PREFIX=`pwd`/../jni/ffmpeg/ffmpeg/armeabi
-    SSL_LD=`pwd`/../jni/openssl-android/armeabi
+    PREFIX=${main_dir}/../jni/ffmpeg/ffmpeg/armeabi
+    SSL_LD=${main_dir}/../jni/openssl-android/armeabi
+
     ADDITIONAL_CONFIGURE_FLAG=
     build_one
 fi

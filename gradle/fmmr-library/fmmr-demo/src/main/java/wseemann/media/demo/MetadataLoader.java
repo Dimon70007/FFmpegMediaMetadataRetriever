@@ -102,20 +102,47 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
     		Bitmap b = fmmr.getFrameAtTime();
 
     		if (b == null) {
-                Log.d(MetadataLoader.class.getName(), "any bitmap frame exists");
-                Bitmap b2 = fmmr.getFrameAtTime(2*1000*1000, FFmpegMediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                Log.d(MetadataLoader.class.getName(), "any bitmap frame is null");
+                Bitmap b2 = fmmr.getFrameAtTime(500, FFmpegMediaMetadataRetriever.OPTION_PREVIOUS_SYNC);
     			if (b2 != null) {
-                    Log.d(MetadataLoader.class.getName(), "frameAtTime bitmap frame exists");
+                    Log.d(MetadataLoader.class.getName(), "previous frameAtTime bitmap frame exists");
     				b = b2;
     			} else {
-                    Log.d(MetadataLoader.class.getName(), "frameAtTime bitmap frame is null");
+                    Log.d(MetadataLoader.class.getName(), "previous frameAtTime bitmap frame is null");
                 }
 
     		} else {
-                Log.d(MetadataLoader.class.getName(), "any bitmap frame is null");
+                Log.d(MetadataLoader.class.getName(), "any bitmap frame exists");
             }
-    		
-    		if (b != null) {
+
+            if (b == null) {
+                Log.d(MetadataLoader.class.getName(), "previous bitmap frame is null");
+                Bitmap b2 = fmmr.getScaledFrameAtTime(0, FFmpegMediaMetadataRetriever.OPTION_CLOSEST_SYNC,1280,720);
+                if (b2 != null) {
+                    Log.d(MetadataLoader.class.getName(), "closest frameAtTime bitmap frame exists");
+                    b = b2;
+                } else {
+                    Log.d(MetadataLoader.class.getName(), "closest frameAtTime bitmap frame is null");
+                }
+
+            } else {
+                Log.d(MetadataLoader.class.getName(), "closest bitmap frame exists");
+            }
+            if (b == null) {
+                Log.d(MetadataLoader.class.getName(), "closest bitmap frame is null");
+                Bitmap b2 = fmmr.getFrameAtTime(0, FFmpegMediaMetadataRetriever.OPTION_NEXT_SYNC);
+                if (b2 != null) {
+                    Log.d(MetadataLoader.class.getName(), "next frameAtTime bitmap frame exists");
+                    b = b2;
+                } else {
+                    Log.d(MetadataLoader.class.getName(), "next frameAtTime bitmap frame is null");
+                }
+
+            } else {
+                Log.d(MetadataLoader.class.getName(), "next bitmap frame exists");
+            }
+
+            if (b != null) {
     			metadata.add(new Metadata("image", b));
     			Log.i(MetadataLoader.class.getName(), "Extracted frame");
     		} else {

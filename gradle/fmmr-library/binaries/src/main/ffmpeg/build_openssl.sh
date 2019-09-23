@@ -2,10 +2,6 @@
 # Cross-compile environment for Android on ARMv7 and x86
 #
 
-export PROPS=$WORKING_DIR/../../../../local.properties
-
-export NDK=`grep ndk.dir $PROPS | cut -d'=' -f2`
-
 if [ "$NDK" = "" ] || [ ! -d $NDK ]; then
   echo "NDK variable not set or path to NDK is invalid, exiting..."
   exit 1

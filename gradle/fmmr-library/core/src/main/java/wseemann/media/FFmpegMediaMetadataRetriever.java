@@ -395,6 +395,8 @@ public class FFmpegMediaMetadataRetriever
                 bitmapOptionsCache.inSampleSize = calculateInSampleSize(bitmapOptionsCache,1280,720);
                 bitmapOptionsCache.inJustDecodeBounds = false;
                 b = BitmapFactory.decodeByteArray(frame, 0, frame.length,bitmapOptionsCache);
+            } else {
+                Log.d(this.getClass().getName(), String.format("frame is null"));
             }
         }catch(Exception e) {
             Log.e(this.getClass().getName(),
@@ -402,13 +404,6 @@ public class FFmpegMediaMetadataRetriever
                             timeUs,
                             option),e);
         }
-//        if (byteArrayInputStream.available() != null) {
-//            Log.d(this.getClass().getName(), String.format("picture size is %d", picture.length);
-//            b = BitmapFactory.decodeByteArray(picture, 0, picture.length, bitmapOptionsCache);
-//        } else {
-//            Log.d(this.getClass().getName(), String.format("picture is null");
-//
-//        }
         return b;
     }
 
@@ -451,9 +446,9 @@ public class FFmpegMediaMetadataRetriever
      * @see #getFrameAtTime(long, int)
      */
     public Bitmap getFrameAtTime() {
-        return getFrameAtTime(0);
+        return getFrameAtTime(-1);
     }
-    
+
     private native byte [] _getFrameAtTime(long timeUs, int option);
 
     /**
@@ -491,19 +486,25 @@ public class FFmpegMediaMetadataRetriever
             throw new IllegalArgumentException("Unsupported option: " + option);
         }
 
-        Bitmap b = null;
-
-        BitmapFactory.Options bitmapOptionsCache = new BitmapFactory.Options();
-        //bitmapOptionsCache.inPreferredConfig = getInPreferredConfig();
-        bitmapOptionsCache.inDither = false;
-
-        byte [] picture = _getScaledFrameAtTime(timeUs, option, width, height);
-
-        if (picture != null) {
-            b = BitmapFactory.decodeByteArray(picture, 0, picture.length, bitmapOptionsCache);
-        }
-
-        return b;
+					Bitmap b = null;
+	        BitmapFactory.Options bitmapOptionsCache = new BitmapFactory.Options();
+	        //bitmapOptionsCache.inPreferredConfig = getInPreferredConfig();
+	        bitmapOptionsCache.inDither = false;
+	        try{
+							byte [] frame = _getScaledFrameAtTime(timeUs, option, width, height);
+	            if (frame != null) {
+	                bitmapOptionsCache.inJustDecodeBounds = false;
+	                b = BitmapFactory.decodeByteArray(frame, 0, frame.length,bitmapOptionsCache);
+	            } else {
+	                Log.d(this.getClass().getName(), String.format("frame is null"));
+	            }
+	        }catch(Exception e) {
+	            Log.e(this.getClass().getName(),
+	                    String.format("Error till decoding bitmap with time: %d, options: %d",
+	                            timeUs,
+	                            option),e);
+	        }
+	        return b;
     }
 
     /**
