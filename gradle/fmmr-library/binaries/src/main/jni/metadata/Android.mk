@@ -10,7 +10,7 @@ LOCAL_SRC_FILES := wseemann_media_MediaMetadataRetriever.cpp \
         ffmpeg_utils.c
 LOCAL_SHARED_LIBRARIES := libssl libswscale libavcodec libavformat libavutil
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../openssl-android/$(TARGET_ARCH_ABI)/include
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/../ffmpeg/ffmpeg/$(TARGET_ARCH_ABI)/include
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/../ffmpeg/ffmpeg/$(TARGET_ARCH_ABI)/include
 LOCAL_LDLIBS := -llog
 LOCAL_LDLIBS += -landroid
 LOCAL_LDLIBS += -ljnigraphics

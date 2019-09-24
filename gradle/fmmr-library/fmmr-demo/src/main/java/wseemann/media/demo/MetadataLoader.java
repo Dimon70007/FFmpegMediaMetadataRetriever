@@ -1,9 +1,9 @@
 /*
- * FFmpegMediaMetadataRetriever: A unified interface for retrieving frame 
+ * FFmpegMediaMetadataRetriever: A unified interface for retrieving frame
  * and meta data from an input media file.
  *
  * Copyright 2015 William Seemann
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -55,12 +55,13 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
     @Override public List<Metadata> loadInBackground() {
     	// Retrieve all metadata.
     	List<Metadata> metadata = new ArrayList<Metadata>();
-    	
+
     	if (mUri == null) {
     		return metadata;
     	}
-    	
-    	FFmpegMediaMetadataRetriever fmmr = new FFmpegMediaMetadataRetriever();
+        Log.d(MetadataLoader.class.getName(), String.format(".loadInBackground with url %s", mUri.toString()));
+
+        FFmpegMediaMetadataRetriever fmmr = new FFmpegMediaMetadataRetriever();
     	try {
             if (FMMRFragment.mFinalSurface != null) {
                 fmmr.setSurface(FMMRFragment.mFinalSurface);
@@ -74,7 +75,7 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
     		for (int i = 0; i < Constants.METADATA_KEYS.length; i++) {
     			String key = Constants.METADATA_KEYS[i];
     			String value = fmmr.extractMetadata(key);
-    		
+
     			if (value != null) {
     				metadata.add(new Metadata(key, value));
     				Log.i(MetadataLoader.class.getName(), "Key: " + key + " Value: " + value);
@@ -99,50 +100,18 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
                     }
                 }
             }
-    		Bitmap b = fmmr.getFrameAtTime();
-
-    		if (b == null) {
-                Log.d(MetadataLoader.class.getName(), "any bitmap frame is null");
-                Bitmap b2 = fmmr.getFrameAtTime(500, FFmpegMediaMetadataRetriever.OPTION_PREVIOUS_SYNC);
-    			if (b2 != null) {
-                    Log.d(MetadataLoader.class.getName(), "previous frameAtTime bitmap frame exists");
-    				b = b2;
-    			} else {
-                    Log.d(MetadataLoader.class.getName(), "previous frameAtTime bitmap frame is null");
-                }
-
-    		} else {
-                Log.d(MetadataLoader.class.getName(), "any bitmap frame exists");
-            }
-
-            if (b == null) {
-                Log.d(MetadataLoader.class.getName(), "previous bitmap frame is null");
-                Bitmap b2 = fmmr.getScaledFrameAtTime(0, FFmpegMediaMetadataRetriever.OPTION_CLOSEST_SYNC,1280,720);
-                if (b2 != null) {
-                    Log.d(MetadataLoader.class.getName(), "closest frameAtTime bitmap frame exists");
-                    b = b2;
-                } else {
-                    Log.d(MetadataLoader.class.getName(), "closest frameAtTime bitmap frame is null");
-                }
-
-            } else {
-                Log.d(MetadataLoader.class.getName(), "closest bitmap frame exists");
-            }
-            if (b == null) {
-                Log.d(MetadataLoader.class.getName(), "closest bitmap frame is null");
-                Bitmap b2 = fmmr.getFrameAtTime(0, FFmpegMediaMetadataRetriever.OPTION_NEXT_SYNC);
-                if (b2 != null) {
-                    Log.d(MetadataLoader.class.getName(), "next frameAtTime bitmap frame exists");
-                    b = b2;
-                } else {
-                    Log.d(MetadataLoader.class.getName(), "next frameAtTime bitmap frame is null");
-                }
-
-            } else {
-                Log.d(MetadataLoader.class.getName(), "next bitmap frame exists");
-            }
-
+            Bitmap b = null;
+            long timeUs = -1L; // get first frame 
+						b = fmmr.getFrameAtTime(timeUs, FFmpegMediaMetadataRetriever.OPTION_CLOSEST_SYNC);
             if (b != null) {
+							timeUs=4500*1000L; // get frame at 3.5 seconds
+							Bitmap b2 = fmmr.getScaledFrameAtTime(timeUs, FFmpegMediaMetadataRetriever.OPTION_CLOSEST_SYNC,1088,1088);
+							if (b2 != null) {
+								b = b2;
+							}
+            }
+
+        if (b != null) {
     			metadata.add(new Metadata("image", b));
     			Log.i(MetadataLoader.class.getName(), "Extracted frame");
     		} else {
@@ -153,7 +122,7 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
     	} finally {
     		fmmr.release();
     	}
-    	
+
         // Sort the list.
         //Collections.sort(entries, ALPHA_COMPARATOR);
 
@@ -172,7 +141,7 @@ public class MetadataLoader extends AsyncTaskLoader<List<Metadata>> {
     				getContext().getString(R.string.error_message),
     				Toast.LENGTH_SHORT).show();
     	}
-    	
+
         if (isReset()) {
             // An async query came in while the loader is stopped.  We
             // don't need the result.

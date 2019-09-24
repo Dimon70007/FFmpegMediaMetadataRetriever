@@ -390,9 +390,6 @@ public class FFmpegMediaMetadataRetriever
         try{
             byte [] frame = _getFrameAtTime(timeUs, option);
             if (frame != null) {
-                bitmapOptionsCache.inJustDecodeBounds = true;
-                b = BitmapFactory.decodeByteArray(frame, 0, frame.length,bitmapOptionsCache);
-                bitmapOptionsCache.inSampleSize = calculateInSampleSize(bitmapOptionsCache,1280,720);
                 bitmapOptionsCache.inJustDecodeBounds = false;
                 b = BitmapFactory.decodeByteArray(frame, 0, frame.length,bitmapOptionsCache);
             } else {
@@ -528,45 +525,7 @@ public class FFmpegMediaMetadataRetriever
      * @see #getScaledFrameAtTime(long, int, int, int)
      */
     public Bitmap getScaledFrameAtTime(long timeUs, int width, int height) {
-        Bitmap b = null;
-
-        BitmapFactory.Options bitmapOptionsCache = new BitmapFactory.Options();
-        //bitmapOptionsCache.inPreferredConfig = getInPreferredConfig();
-        bitmapOptionsCache.inDither = false;
-
-        byte [] picture = _getScaledFrameAtTime(timeUs, OPTION_CLOSEST_SYNC, width, height);
-
-        if (picture != null) {
-            b = BitmapFactory.decodeByteArray(picture, 0, picture.length, bitmapOptionsCache);
-        }
-
-        return b;
-    }
-
-    public static int calculateInSampleSize(
-            BitmapFactory.Options options, int reqWidth, int reqHeight) {
-        // Raw height and width of image
-        final int height = options.outHeight;
-        final int width = options.outWidth;
-        int inSampleSize = 1;
-        Log.d(FFmpegMediaMetadataRetriever.class.getName(),
-                String.format("options: width: %d, height: %d, reqWidth: %d, reqHeight: %d",
-                        width, height, reqWidth, reqHeight));
-
-        if (height > reqHeight || width > reqWidth) {
-
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
-
-            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
-            // height and width larger than the requested height and width.
-            while ((halfHeight / inSampleSize) >= reqHeight
-                    && (halfWidth / inSampleSize) >= reqWidth) {
-                inSampleSize *= 2;
-            }
-        }
-
-        return inSampleSize;
+        return getScaledFrameAtTime(timeUs, OPTION_CLOSEST_SYNC, width, height);
     }
 
     private native byte [] _getScaledFrameAtTime(long timeUs, int option, int width, int height);

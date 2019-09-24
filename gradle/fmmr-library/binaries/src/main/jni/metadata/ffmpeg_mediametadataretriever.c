@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#define LOG_TAG "FFMPEGMediaMetadataRetrieverJNI"
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
@@ -27,10 +27,32 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#ifdef ANDROID
+#include <jni.h>
 #include <android/log.h>
+#define exit exit_function_not_allowed
+// #define LOGE(format, ...)  __android_log_vprint(ANDROID_LOG_ERROR, "(>_<)", format, ##__VA_ARGS__)
+// #define LOGI(format, ...)  __android_log_vprint(ANDROID_LOG_INFO,  "(^_^)", format, ##__VA_ARGS__)
+// #define LOG_ERROR(message) __android_log_write(ANDROID_LOG_ERROR, "ffmpeg", message)
+// #define LOG_INFO(message) __android_log_write(ANDROID_LOG_INFO, "ffmpeg", message)
+// #define printf(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__);
+#else
+// #define LOGE(format, ...)  printf("(>_<) " format "\n", ##__VA_ARGS__)
+// #define LOGI(format, ...)  printf("(^_^) " format "\n", ##__VA_ARGS__)
+#endif
 
 const int TARGET_IMAGE_FORMAT = AV_PIX_FMT_RGBA; //AV_PIX_FMT_RGB24;
 const int TARGET_IMAGE_CODEC = AV_CODEC_ID_PNG;
+
+//Output FFmpeg's av_log()
+void custom_log(void *ptr, int level, const char* fmt, va_list vl){
+	if (level <= AV_LOG_WARNING) {
+		__android_log_vprint(ANDROID_LOG_ERROR, "ffmpeg", fmt, vl);
+	} 
+	// if (level > AV_LOG_ERROR) {
+	// 	__android_log_vprint(ANDROID_LOG_INFO, "ffmpeg", fmt, vl);
+	// } 
+}
 
 void convert_image(State *state, AVCodecContext *pCodecCtx, AVFrame *pFrame, AVPacket *avpkt, int *got_packet_ptr, int width, int height);
 
@@ -65,7 +87,7 @@ int get_scaled_context(State *s, AVCodecContext *pCodecCtx, int width, int heigh
 	s->scaled_codecCtx->codec_type = AVMEDIA_TYPE_VIDEO;
 	s->scaled_codecCtx->time_base.num = s->video_st->codec->time_base.num;
 	s->scaled_codecCtx->time_base.den = s->video_st->codec->time_base.den;
-
+	
 	if (!targetCodec || avcodec_open2(s->scaled_codecCtx, targetCodec, NULL) < 0) {
 		printf("avcodec_open2() failed\n");
 		return FAILURE;
@@ -135,6 +157,8 @@ int stream_component_open(State *s, int stream_index) {
 			if (!s->codecCtx) {
 				printf("avcodec_alloc_context3 failed\n");
 				return FAILURE;
+			} else {
+				printf("avcodec_alloc_context3 succeed\n");
 			}
 
 			s->codecCtx->bit_rate = s->video_st->codec->bit_rate;
@@ -180,7 +204,7 @@ int set_data_source_l(State **ps, const char* path) {
 
     AVDictionary *options = NULL;
     av_dict_set(&options, "icy", "1", 0);
-    av_dict_set(&options, "user-agent", "FFmpegMediaMetadataRetriever", 0);
+    av_dict_set(&options, "user_agent", "FFmpegMediaMetadataRetriever", 0);
     
     if (state->headers) {
         av_dict_set(&options, "headers", state->headers, 0);
@@ -192,12 +216,16 @@ int set_data_source_l(State **ps, const char* path) {
     }
     
     if (avformat_open_input(&state->pFormatCtx, path, NULL, &options) != 0) {
+			__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "failed_to_open_input");
 	    printf("Metadata could not be retrieved\n");
 		*ps = NULL;
     	return FAILURE;
-    }
+    } else {
+			__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "avformat_open_input_succeed");
+		}
 
 	if (avformat_find_stream_info(state->pFormatCtx, NULL) < 0) {
+			__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "failed_to_find_stream_info");
 	    printf("Metadata could not be retrieved\n");
 	    avformat_close_input(&state->pFormatCtx);
 		*ps = NULL;
@@ -231,11 +259,15 @@ int set_data_source_l(State **ps, const char* path) {
 		stream_component_open(state, video_index);
 	}
 
-	/*if(state->video_stream < 0 || state->audio_stream < 0) {
-	    avformat_close_input(&state->pFormatCtx);
-		*ps = NULL;
-		return FAILURE;
-	}*/
+	if(state->video_stream < 0) {
+		__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "no_video_stream_found");
+		if(state->audio_stream < 0) {
+			__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "no_audio_stream_found");
+	    avformat_close_input(&state->pFormatCtx);	
+			*ps = NULL;
+			return FAILURE;
+		}
+	}
 
     set_rotation(state->pFormatCtx, state->audio_st, state->video_st);
     set_framerate(state->pFormatCtx, state->audio_st, state->video_st);
@@ -255,6 +287,12 @@ int set_data_source_l(State **ps, const char* path) {
 }
 
 void init(State **ps) {
+	av_log_set_level(AV_LOG_ERROR);
+	av_log_set_callback(custom_log);
+	int ffmpeg_log_level = av_log_get_level(); 
+	printf ("ffmpeg_log_level is% d. \ n", ffmpeg_log_level); 
+	// av_log_set_level(AV_LOG_TRACE);
+	
 	State *state = *ps;
 
 	if (state && state->pFormatCtx) {
@@ -331,7 +369,7 @@ int set_data_source_fd(State **ps, int fd, int64_t offset, int64_t length) {
 }
 
 const char* extract_metadata(State **ps, const char* key) {
-	printf("extract_metadata\n");
+	// printf("extract_metadata\n");
     char* value = NULL;
 	
 	State *state = *ps;
@@ -409,7 +447,7 @@ int get_embedded_picture(State **ps, AVPacket *pkt) {
         	// Is this a packet from the video stream?
         	if (pkt->stream_index == state->video_stream) {
         		int codec_id = state->video_st->codec->codec_id;
-				int pix_fmt = state->video_st->codec->pix_fmt;
+						int pix_fmt = state->video_st->codec->pix_fmt;
 
         		// If the image isn't already in a supported format convert it to one
         		if (!is_supported_format(codec_id, pix_fmt)) {
@@ -417,16 +455,18 @@ int get_embedded_picture(State **ps, AVPacket *pkt) {
         			
    			        frame = av_frame_alloc();
         			    	
+								__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "unsupported_img_format");
    			        if (!frame) {
    			        	break;
         			}
-   			        
         			if (avcodec_decode_video2(state->video_st->codec, frame, &got_frame, pkt) <= 0) {
+								__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "decode_video2_failed");
         				break;
         			}
 
         			// Did we get a video frame?
         			if (got_frame) {
+								__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "got_frame");
         				AVPacket convertedPkt;
         	            av_init_packet(&convertedPkt);
         	            convertedPkt.size = 0;
@@ -443,6 +483,7 @@ int get_embedded_picture(State **ps, AVPacket *pkt) {
         				break;
         			}
         		} else {
+							__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "no_video_frame");
         			av_packet_unref(pkt);
                 	av_init_packet(pkt);
                     av_copy_packet(pkt, &state->pFormatCtx->streams[i]->attached_pic);
@@ -467,12 +508,15 @@ void convert_image(State *state, AVCodecContext *pCodecCtx, AVFrame *pFrame, AVP
 	AVCodecContext *codecCtx;
 	struct SwsContext *scalerCtx;
 	AVFrame *frame;
-	
+	__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "convert_image");
+
 	*got_packet_ptr = 0;
 
 	if (width != -1 && height != -1) {
-		if (state->scaled_codecCtx == NULL ||
-				state->scaled_sws_ctx == NULL) {
+		if (state->scaled_codecCtx == NULL) {
+			get_scaled_context(state, pCodecCtx, width, height);
+		}
+		if (state->scaled_sws_ctx == NULL) {
 			get_scaled_context(state, pCodecCtx, width, height);
 		}
 
@@ -482,7 +526,6 @@ void convert_image(State *state, AVCodecContext *pCodecCtx, AVFrame *pFrame, AVP
 		codecCtx = state->codecCtx;
 		scalerCtx = state->sws_ctx;
 	}
-
 	if (width == -1) {
 		width = pCodecCtx->width;
 	}
@@ -490,24 +533,26 @@ void convert_image(State *state, AVCodecContext *pCodecCtx, AVFrame *pFrame, AVP
 	if (height == -1) {
 		height = pCodecCtx->height;
 	}
+	__android_log_print(ANDROID_LOG_INFO, LOG_TAG, "width_(%ld)_height_(%ld)", width, height);
 
 	frame = av_frame_alloc();
-	
-	// Determine required buffer size and allocate buffer
-	int numBytes = avpicture_get_size(TARGET_IMAGE_FORMAT, codecCtx->width, codecCtx->height);
-	void * buffer = (uint8_t *) av_malloc(numBytes * sizeof(uint8_t));
+	if (!frame) {
+		printf("Could not allocate audio frame\n");
+	}
 
 	// set the frame parameters
 	frame->format = TARGET_IMAGE_FORMAT;
 	frame->width = codecCtx->width;
 	frame->height = codecCtx->height;
+	// Determine required buffer size and allocate buffer
+	int numBytes = avpicture_get_size(TARGET_IMAGE_FORMAT, codecCtx->width, codecCtx->height);
+	uint8_t * buffer = (uint8_t *) av_malloc(numBytes * sizeof(uint8_t));
 
-	avpicture_fill(((AVPicture *)frame),
+		avpicture_fill(((AVPicture *)frame),
 			buffer,
 			TARGET_IMAGE_FORMAT,
 			codecCtx->width,
 			codecCtx->height);
-    
     sws_scale(scalerCtx,
     		(const uint8_t * const *) pFrame->data,
     		pFrame->linesize,
@@ -540,6 +585,7 @@ void convert_image(State *state, AVCodecContext *pCodecCtx, AVFrame *pFrame, AVP
 	}
 	
 	if (ret < 0) {
+		printf("avcodec_encode_video2_%ld\n", ret);
 		*got_packet_ptr = 0;
 	}
 	
@@ -556,17 +602,35 @@ void convert_image(State *state, AVCodecContext *pCodecCtx, AVFrame *pFrame, AVP
 
 void decode_frame(State *state, AVPacket *pkt, int *got_frame, int64_t desired_frame_number, int width, int height) {
 	// Allocate video frame
-	AVFrame *frame = av_frame_alloc();
-
+	AVStream *vid_stream = state->video_st;
+	AVCodecContext* ctx_codec = state->pFormatCtx->streams[state->video_stream]->codec;
+	AVFrame* frame = av_frame_alloc();
 	*got_frame = 0;
 	
 	if (!frame) {
+		__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "not_alloc_frame");
 	    return;
 	}
-	
-	// Read frames and return the first one found
-	while (av_read_frame(state->pFormatCtx, pkt) >= 0) {
+	if (!vid_stream || vid_stream == NULL) {
+      __android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "no_video_stream");
+      return;
+  }
 
+	if(avcodec_parameters_to_context(ctx_codec, vid_stream->codecpar)<0){ //failed
+		__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "512");
+	}
+
+	// Read frames and return the first one found
+	int frameToRender = 2; // should be == thread_count, but thread_count is stragelly always = 1
+	// workaround_decode needed for decoding single keyframe - see https://lists.ffmpeg.org/pipermail/libav-user/2014-April/006572.html 
+	int workaround_decode = 0; 
+	// while (av_read_frame(state->pFormatCtx, pkt) >= 0) {
+	while (frameToRender > 0) {
+		workaround_decode = av_read_frame(state->pFormatCtx, pkt);
+		if (workaround_decode < 0) {
+			frameToRender -= 1;
+		}
+		__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "read_frame");
 		// Is this a packet from the video stream?
 		if (pkt->stream_index == state->video_stream) {
 			int codec_id = state->video_st->codec->codec_id;
@@ -576,28 +640,37 @@ void decode_frame(State *state, AVPacket *pkt, int *got_frame, int64_t desired_f
 			if (!is_supported_format(codec_id, pix_fmt)) {
 	            *got_frame = 0;
 	            
+				__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "decode_video2_begun");
 				// Decode video frame
 				if (avcodec_decode_video2(state->video_st->codec, frame, got_frame, pkt) <= 0) {
 					*got_frame = 0;
+					__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "decode_video2_failed");
 					break;
 				}
 
 				// Did we get a video frame?
 				if (*got_frame) {
+					__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "got_frame");
 					if (desired_frame_number == -1 ||
 							(desired_frame_number != -1 && frame->pkt_pts >= desired_frame_number)) {
 						if (pkt->data) {
 							av_packet_unref(pkt);
 						}
-					    av_init_packet(pkt);
+				    av_init_packet(pkt);
 						convert_image(state, state->video_st->codec, frame, pkt, got_frame, width, height);
 						break;
 					}
+				} else {
+					// avcodec_decode_video2 succeed but no got_frame
+					__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "no_got_frame");
 				}
 			} else {
-				*got_frame = 1;
-	        	break;
+				__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "has_img_frame");
+				*got_frame = 1; //true
+      	break;
 			}
+		} else {
+			__android_log_print(ANDROID_LOG_INFO, LOG_TAG, "skip_audio_stream_(%lld)", pkt->stream_index);
 		}
 	}
 	
@@ -610,23 +683,25 @@ int get_frame_at_time(State **ps, int64_t timeUs, int option, AVPacket *pkt) {
 }
 
 int get_scaled_frame_at_time(State **ps, int64_t timeUs, int option, AVPacket *pkt, int width, int height) {
-	printf("get_frame_at_time\n");
-	int got_packet = 0;
+		printf("get_frame_at_time\n");
+		int got_packet = 0;
     int64_t desired_frame_number = -1;
 	
     State *state = *ps;
 
     Options opt = option;
     
-	if (!state || !state->pFormatCtx || state->video_stream < 0) {
-		return FAILURE;
-	}
-	
-    if (timeUs > -1) {
+		if (!state || !state->pFormatCtx || state->video_stream < 0) {
+    	__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "invalide_state_(%lld)", state->video_stream);
+			return FAILURE;
+		}
+
+    if (timeUs > 0) {
         int stream_index = state->video_stream;
+			__android_log_print(ANDROID_LOG_INFO, LOG_TAG, "seeking_in_(%d)_frame_(%lld)", stream_index, timeUs);
         int64_t seek_time = av_rescale_q(timeUs, AV_TIME_BASE_Q, state->pFormatCtx->streams[stream_index]->time_base);
         int64_t seek_stream_duration = state->pFormatCtx->streams[stream_index]->duration;
-
+				__android_log_print(ANDROID_LOG_INFO, LOG_TAG, "t_base_(%lld)_seek_t_(%lld)", state->pFormatCtx->streams[stream_index]->time_base, seek_time);
         int flags = 0;
         int ret = -1;
         
@@ -635,15 +710,17 @@ int get_scaled_frame_at_time(State **ps, int64_t timeUs, int option, AVPacket *p
         // seek_time
         if (seek_stream_duration >= 0 && seek_time > seek_stream_duration) {
         	seek_time = seek_stream_duration;
+					__android_log_print(ANDROID_LOG_INFO, LOG_TAG, "_seek_t_(%lld)", seek_time);
         }
         
         if (seek_time < 0) {
+					__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "negative_seek_time_(%lld)", seek_time);
         	return FAILURE;
        	}
         
         if (opt == OPTION_CLOSEST) {
         	desired_frame_number = seek_time;
-        	flags = AVSEEK_FLAG_BACKWARD; 
+        	flags = AVSEEK_FLAG_ANY; 
         } else if (opt == OPTION_CLOSEST_SYNC) {
         	flags = 0;
         } else if (opt == OPTION_NEXT_SYNC) {
@@ -655,27 +732,25 @@ int get_scaled_frame_at_time(State **ps, int64_t timeUs, int option, AVPacket *p
         ret = av_seek_frame(state->pFormatCtx, stream_index, seek_time, flags);
         
     	if (ret < 0) {
+				__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "av_seek_frame_failed");
     		return FAILURE;
     	} else {
             if (state->audio_stream >= 0) {
+							__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "avcdc_flush_abuffers");
             	avcodec_flush_buffers(state->audio_st->codec);
             }
-    		
+
             if (state->video_stream >= 0) {
+							__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "avcdc_flush_vbuffers");
             	avcodec_flush_buffers(state->video_st->codec);
             }
     	}
-    }
-    
+    } else {
+			__android_log_write(ANDROID_LOG_INFO, LOG_TAG, "decode_first_frame");
+		}
+
     decode_frame(state, pkt, &got_packet, desired_frame_number, width, height);
-    
-    if (got_packet) {
-    	//const char *filename = "/Users/wseemann/Desktop/one.png";
-    	//FILE *picture = fopen(filename, "wb");
-    	//fwrite(pkt->data, pkt->size, 1, picture);
-    	//fclose(picture);
-    }
-    
+
 	if (got_packet) {
 		return SUCCESS;
 	} else {

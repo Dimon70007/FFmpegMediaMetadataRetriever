@@ -20,8 +20,8 @@ function setCurrentPlatform {
   UNAME_S=$(uname -s)
   case "$UNAME_S" in
       Darwin)
-          # export FF_MAKE_FLAGS="-j`sysctl -n machdep.cpu.thread_count`"
-          export FF_MAKE_FLAGS="-j`sysctl -n machdep.cpu.core_count`"
+          export FF_MAKE_FLAGS="-j`sysctl -n machdep.cpu.thread_count`"
+          # export FF_MAKE_FLAGS="-j`sysctl -n machdep.cpu.core_count`"
           export BUILD_PLATFORM=darwin-x86_64
           echo "FF_MAKE_FLAGS: ${FF_MAKE_FLAGS}"
       ;;

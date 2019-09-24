@@ -255,19 +255,19 @@ static jbyteArray wseemann_media_FFmpegMediaMetadataRetriever_getFrameAtTime(JNI
    jbyteArray array = NULL;
 
    if (retriever->getFrameAtTime(timeUs, option, &packet) == 0) {
-	   int size = packet.size;
-       uint8_t* data = packet.data;
-	   array = env->NewByteArray(size);
-	   if (!array) {  // OutOfMemoryError exception has already been thrown.
-		   __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "getFrameAtTime: OutOfMemoryError is thrown.");
-       } else {
-       	   //__android_log_print(ANDROID_LOG_INFO, LOG_TAG, "getFrameAtTime: Got frame.");
-    	   jbyte* bytes = env->GetByteArrayElements(array, NULL);
-           if (bytes != NULL) {
-               memcpy(bytes, data, size);
-               env->ReleaseByteArrayElements(array, bytes, 0);
-           }
-       }
+	   	int size = packet.size;
+      uint8_t* data = packet.data;
+	   	array = env->NewByteArray(size);
+	  	if (!array) {  // OutOfMemoryError exception has already been thrown.
+		  		__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "getFrameAtTime: OutOfMemoryError is thrown.");
+    	} else {
+				__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "getFrameAtTime_succeed");
+    	  jbyte* bytes = env->GetByteArrayElements(array, NULL);
+				if (bytes != NULL) {
+				   memcpy(bytes, data, size);
+				   env->ReleaseByteArrayElements(array, bytes, 0);
+				}
+      }
    }
 
    av_packet_unref(&packet);
@@ -295,7 +295,7 @@ static jbyteArray wseemann_media_FFmpegMediaMetadataRetriever_getScaledFrameAtTi
         if (!array) {  // OutOfMemoryError exception has already been thrown.
             __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "getFrameAtTime: OutOfMemoryError is thrown.");
         } else {
-            //__android_log_print(ANDROID_LOG_INFO, LOG_TAG, "getFrameAtTime: Got frame.");
+						__android_log_write(ANDROID_LOG_ERROR, LOG_TAG, "getScaledFrameAtTime_succeed");
             jbyte* bytes = env->GetByteArrayElements(array, NULL);
             if (bytes != NULL) {
                 memcpy(bytes, data, size);

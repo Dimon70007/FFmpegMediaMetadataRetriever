@@ -20,6 +20,8 @@ if [ -z "$PLATFORM_X32" ]; then
   exit 1
 fi
 export TARGET=$1
+# DEBUG=true
+DEBUG=
 
 ARM_PLATFORM=$NDK/platforms/${PLATFORM_X32}/arch-arm
 ARM_PREBUILT=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/$BUILD_PLATFORM
@@ -96,7 +98,7 @@ function build_one
 {
     CROSS_PREFIX=${PREBUILT}/bin/${HOST}-
     CC="${CROSS_PREFIX}gcc"
-    CXX="${CROSS_PREFIX}c++"
+    CXX="${CROSS_PREFIX}g++"
     AR="${CROSS_PREFIX}ar"
     LD="${CROSS_PREFIX}ld"
     NM="${CROSS_PREFIX}nm"
@@ -121,11 +123,6 @@ function build_one
 
     pushd $FF_SOURCE_DIR
 
-    echo "Cleaning..."
-  	rm -f config.h
-  	make clean || true
-  	rm -rf ${TOOLCHAIN_PREFIX}
-
     #    --prefix=$PREFIX \
 
     #--incdir=$BUILD_DIR/include \
@@ -136,7 +133,18 @@ function build_one
 
     # TODO Adding aac decoder brings "libnative.so has text relocations. This is wasting memory and prevents security hardening. Please fix." message in Android.
     # export COMMON_FF_CFG_FLAGS="$COMMON_FF_CFG_FLAGS --disable-linux-perf"
-
+    DEBUG_FLAGS=
+    if [ -z "$DEBUG" ]; then
+      DEBUG_FLAGS="$DEBUG_FLAGS --enable-optimizations"
+      DEBUG_FLAGS="$DEBUG_FLAGS --enable-stripping"
+      DEBUG_FLAGS="$DEBUG_FLAGS --enable-small"
+      DEBUG_FLAGS="$DEBUG_FLAGS --enable-debug=1" # gcc debug level, not ffmpeg debug level
+    else      
+      DEBUG_FLAGS="$DEBUG_FLAGS --enable-debug=3" # gcc debug level, not ffmpeg debug level default is g2
+      DEBUG_FLAGS="$DEBUG_FLAGS --disable-optimizations"
+      DEBUG_FLAGS="$DEBUG_FLAGS --disable-stripping"
+      DEBUG_FLAGS="$DEBUG_FLAGS --disable-small"
+    fi
 # --extra-ldflags="-Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
     echo "configuring ..."
     ./configure \
@@ -146,9 +154,8 @@ function build_one
       	--strip=${STRIP} \
       	--cc=${CC} \
       	--cxx=${CXX} \
-      	--enable-stripping \
+        --arch=$ARCH \
         --target-os=linux \
-        --x86asmexe=$NDK/prebuilt/${BUILD_PLATFORM}/bin/yasm \
         --enable-pic \
         --cross-prefix=$CROSS_PREFIX \
         --sysroot=$PLATFORM \
@@ -156,11 +163,10 @@ function build_one
         --libdir=$BUILD_DIR/${TARGET}/lib \
         --enable-cross-compile \
         --extra-libs="-lgcc" \
-        --arch=$ARCH \
         --extra-cflags="-Wl,-Bsymbolic -Os -DCONFIG_LINUX_PERF=0 -DANDROID $OPTIMIZE_CFLAGS $SSL_EXTRA_CFLAGS -fPIE -pie -fPIC" \
         --enable-shared \
-        --enable-debug \
         --extra-ldflags="-Wl,-Bsymbolic -Wl,-rpath-link=$PLATFORM/usr/lib -L$PLATFORM/usr/lib -nostdlib -lc -lm -ldl -fPIC -llog $SSL_EXTRA_LDFLAGS -DOPENSSL_API_COMPAT=0x00908000L" \
+        $DEBUG_FLAGS \
         $COMMON_FF_CFG_FLAGS \
         $ADDITIONAL_CONFIGURE_FLAG
 
@@ -176,8 +182,6 @@ function build_one
     cp -r $BUILD_DIR/$TARGET/* $PREFIX
 }
 
-TOOLCHAIN_PREFIX=${FF_SOURCE_DIR}/toolchain-android
-
 if [ $TARGET == 'arm64-v8a' ]; then
     #arm64-v8a
     CPU=arm64-v8a
@@ -191,7 +195,7 @@ if [ $TARGET == 'arm64-v8a' ]; then
     HOST=aarch64-linux-android
 
     OPTIMIZE_CFLAGS=
-    ADDITIONAL_CONFIGURE_FLAG="--enable-neon --enable-optimizations"
+    ADDITIONAL_CONFIGURE_FLAG="--enable-asm --enable-neon --enable-optimizations"
     build_one
 fi
 
@@ -208,7 +212,7 @@ if [ $TARGET == 'x86_64' ]; then
     HOST=x86_64-linux-android
     OPTIMIZE_CFLAGS="-fomit-frame-pointer"
 
-    ADDITIONAL_CONFIGURE_FLAG="--disable-asm"
+    ADDITIONAL_CONFIGURE_FLAG="--enable-asm"
     build_one
 fi
 
@@ -225,7 +229,7 @@ if [ $TARGET == 'i686' ]; then
     SSL_LD=${main_dir}/../jni/openssl-android/x86
 
     OPTIMIZE_CFLAGS="$OPTIMIZE_CFLAGS -march=$CPU"
-    ADDITIONAL_CONFIGURE_FLAG="--disable-x86asm --disable-inline-asm --disable-asm -enable-yasm"
+    ADDITIONAL_CONFIGURE_FLAG="--disable-asm --enable-yasm"
     build_one
 fi
 
@@ -240,8 +244,8 @@ if [ $TARGET == 'armv7-a' ]; then
     OPTIMIZE_CFLAGS="-mfloat-abi=softfp -marm -march=$CPU "
     PREFIX=${main_dir}/../jni/ffmpeg/ffmpeg/armeabi-v7a
     SSL_LD=${main_dir}/../jni/openssl-android/armeabi-v7a
-
-    ADDITIONAL_CONFIGURE_FLAG="--enable-neon"
+ADDITIONAL_CONFIGURE_FLAG=""
+    ADDITIONAL_CONFIGURE_FLAG="--enable-asm --enable-neon"
     build_one
 fi
 
@@ -256,7 +260,6 @@ if [ $TARGET == 'arm' ]; then
     OPTIMIZE_CFLAGS=""
     PREFIX=${main_dir}/../jni/ffmpeg/ffmpeg/armeabi
     SSL_LD=${main_dir}/../jni/openssl-android/armeabi
-
-    ADDITIONAL_CONFIGURE_FLAG=
+    ADDITIONAL_CONFIGURE_FLAG="--enable-asm"
     build_one
 fi
